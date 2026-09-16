@@ -7,20 +7,36 @@ const SupabaseService = (() => {
   const STORAGE_KEY_URL = 'jungles_supabase_url';
   const STORAGE_KEY_KEY = 'jungles_supabase_key';
 
+  // Credenciales oficiales de Supabase configuradas por el usuario
+  const DEFAULT_SUPABASE_URL = 'https://pnmqebbezoztagkybuvg.supabase.co';
+  const DEFAULT_SUPABASE_KEY = 'sb_publishable_Evs4MbyZj3wR8DWCDTK_0A_tSefd6Gh';
+
   let client = null;
   let realtimeChannel = null;
 
-  // Cargar credenciales guardadas
+  // Limpiar URL si el usuario copió con /rest/v1 o barras finales
+  function cleanSupabaseUrl(url) {
+    if (!url) return '';
+    let cleaned = url.trim();
+    cleaned = cleaned.replace(/\/rest\/v1\/?$/, '');
+    cleaned = cleaned.replace(/\/+$/, '');
+    return cleaned;
+  }
+
+  // Cargar credenciales guardadas (o las oficiales por defecto)
   function getCredentials() {
+    const savedUrl = localStorage.getItem(STORAGE_KEY_URL);
+    const savedKey = localStorage.getItem(STORAGE_KEY_KEY);
     return {
-      url: localStorage.getItem(STORAGE_KEY_URL) || '',
-      key: localStorage.getItem(STORAGE_KEY_KEY) || ''
+      url: cleanSupabaseUrl(savedUrl || DEFAULT_SUPABASE_URL),
+      key: (savedKey || DEFAULT_SUPABASE_KEY).trim()
     };
   }
 
   function setCredentials(url, key) {
     if (url && key) {
-      localStorage.setItem(STORAGE_KEY_URL, url.trim());
+      const cleaned = cleanSupabaseUrl(url);
+      localStorage.setItem(STORAGE_KEY_URL, cleaned);
       localStorage.setItem(STORAGE_KEY_KEY, key.trim());
       initClient();
       return true;
@@ -67,7 +83,8 @@ const SupabaseService = (() => {
   async function testConnection(testUrl, testKey) {
     try {
       if (!testUrl || !testKey) throw new Error('Debes ingresar la URL y la Anon Key');
-      const tempClient = window.supabase.createClient(testUrl.trim(), testKey.trim());
+      const cleanUrl = cleanSupabaseUrl(testUrl);
+      const tempClient = window.supabase.createClient(cleanUrl, testKey.trim());
       const { data, error } = await tempClient.from('cierres').select('id').limit(1);
       if (error && error.code !== 'PGRST116') {
         throw error;
