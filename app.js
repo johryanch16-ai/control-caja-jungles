@@ -166,15 +166,15 @@ function calculateVenueTotals(venueId) {
   const d1 = Number(draft.datafono1) || 0;
   const d2 = Number(draft.datafono2) || 0;
   
-  // Datáfonos con IVA 13%
+  // Datáfonos con rebajo del 13% (menos el 13%)
   const subtotalDatafonos = d1 + d2;
   const ivaDatafonos = subtotalDatafonos * 0.13;
-  const totalDatafonos = subtotalDatafonos * 1.13; // (d1 + d2) * 1.13
+  const totalDatafonos = subtotalDatafonos - ivaDatafonos; // (d1 + d2) - 13%
 
   // Créditos / Fiados
   const totalCreditos = draft.creditos.reduce((acc, item) => acc + (Number(item.amount) || 0), 0);
 
-  // Total Ventas del Día = Efectivo + Total Datáfonos (+13%) + Total Créditos
+  // Total Ventas del Día = Efectivo + Total Datáfonos (-13%) + Total Créditos
   const totalVentas = efectivo + totalDatafonos + totalCreditos;
 
   // 10% de Servicio / Ley
@@ -304,7 +304,7 @@ function recalculateAndRenderForm() {
 
   // Datáfonos
   document.getElementById('display-subtotal-datafonos').textContent = formatCurrency(totals.subtotalDatafonos);
-  document.getElementById('display-iva-datafonos').textContent = '+' + formatCurrency(totals.ivaDatafonos);
+  document.getElementById('display-iva-datafonos').textContent = '-' + formatCurrency(totals.ivaDatafonos);
   document.getElementById('display-total-datafonos').textContent = formatCurrency(totals.totalDatafonos);
 
   // Créditos
@@ -858,7 +858,7 @@ function renderHistoryTable() {
             </div>
 
             <div class="history-detail-item">
-              <span class="history-detail-label">💳 Datáfonos (+13%)</span>
+              <span class="history-detail-label">💳 Datáfonos (-13%)</span>
               <span class="history-detail-val">${formatCurrency(c.totalDatafonos)}</span>
             </div>
 
@@ -1051,8 +1051,8 @@ function generateWhatsAppText(c) {
   text += `💳 *Datáfono 1:* ${formatCurrency(c.datafono1)}\n`;
   text += `💳 *Datáfono 2:* ${formatCurrency(c.datafono2)}\n`;
   text += `🧾 *Subtotal Tarjetas:* ${formatCurrency(c.subtotalDatafonos)}\n`;
-  text += `➕ *IVA (13%):* ${formatCurrency(c.ivaDatafonos)}\n`;
-  text += `💳 *Total Datáfonos (+13%):* ${formatCurrency(c.totalDatafonos)}\n`;
+  text += `➖ *Rebajo IVA (13%):* -${formatCurrency(c.ivaDatafonos)}\n`;
+  text += `💳 *Total Datáfonos (-13%):* ${formatCurrency(c.totalDatafonos)}\n`;
   text += `━━━━━━━━━━━━━━━━━━━━━\n`;
   text += `📝 *Créditos / Fiados:* ${formatCurrency(c.totalCreditos)} (${c.creditos.length} clientes)\n`;
   if (c.creditos.length > 0) {
@@ -1176,7 +1176,7 @@ function renderRecibosView() {
       <!-- Desglose de Operaciones en Chips -->
       <div class="recibo-chips-row">
         <span class="recibo-mini-chip">💵 Efectivo: <strong>${formatCurrency(c.efectivo)}</strong></span>
-        <span class="recibo-mini-chip">💳 Datáfonos (+13%): <strong>${formatCurrency(c.totalDatafonos)}</strong></span>
+        <span class="recibo-mini-chip">💳 Datáfonos (-13%): <strong>${formatCurrency(c.totalDatafonos)}</strong></span>
         <span class="recibo-mini-chip">📝 Créditos: <strong>${formatCurrency(c.totalCreditos)}</strong> (${creditosCount})</span>
         <span class="recibo-mini-chip">👥 Personal: <strong>${empleadosCount} pagos</strong></span>
       </div>
@@ -1430,7 +1430,7 @@ function recalculateEditTotals() {
 
   const subtotalD = d1 + d2;
   const ivaD = subtotalD * 0.13;
-  const totalD = subtotalD * 1.13;
+  const totalD = subtotalD - ivaD;
 
   const totalCred = currentEditingDraft.creditos.reduce((acc, c) => acc + (Number(c.amount) || 0), 0);
   const totalVentas = ef + totalD + totalCred;
@@ -1438,7 +1438,7 @@ function recalculateEditTotals() {
   const balanceNeto = totalVentas - totalEmp;
 
   document.getElementById('edit-subtotal-datafonos').textContent = formatCurrency(subtotalD);
-  document.getElementById('edit-iva-datafonos').textContent = '+' + formatCurrency(ivaD);
+  document.getElementById('edit-iva-datafonos').textContent = '-' + formatCurrency(ivaD);
   document.getElementById('edit-total-datafonos').textContent = formatCurrency(totalD);
   document.getElementById('edit-total-creditos').textContent = formatCurrency(totalCred);
   document.getElementById('edit-total-empleados').textContent = '-' + formatCurrency(totalEmp);
@@ -1626,11 +1626,11 @@ function showReceiptModal(closure) {
           <td class="td-val">${formatCurrency(closure.subtotalDatafonos)}</td>
         </tr>
         <tr style="color: #b45309;">
-          <td>+ Recargo IVA (13% Ley Costarricense)</td>
-          <td class="td-val">+${formatCurrency(closure.ivaDatafonos)}</td>
+          <td>- Rebajo IVA (13%)</td>
+          <td class="td-val">-${formatCurrency(closure.ivaDatafonos)}</td>
         </tr>
         <tr style="background: #f8fafc; font-weight: 700;">
-          <td>Total Datáfonos con IVA (+13%)</td>
+          <td>Total Datáfonos (-13%)</td>
           <td class="td-val">${formatCurrency(closure.totalDatafonos)}</td>
         </tr>
       </tbody>

@@ -164,14 +164,14 @@
             </div>
           </div>
 
-          <!-- 2. Datáfonos (1 + 2) con 13% de IVA -->
+          <!-- 2. Datáfonos (1 + 2) con rebajo del 13% de IVA -->
           <div class="card form-card card-datafonos">
             <div class="field-header">
               <div class="title-with-badge">
                 <span class="field-title">Datáfonos (Tarjetas)</span>
-                <span class="badge-iva">+13% IVA Auto</span>
+                <span class="badge-iva">-13% IVA Auto</span>
               </div>
-              <span class="field-helper">Suma Datáfono 1 + Datáfono 2 multiplicado por 1.13</span>
+              <span class="field-helper">Suma Datáfono 1 + Datáfono 2 menos el 13%</span>
             </div>
 
             <div class="datafonos-grid">
@@ -195,15 +195,15 @@
             <!-- Desglose de cálculo IVA -->
             <div class="datafono-breakdown">
               <div class="breakdown-row">
-                <span>Subtotal Datáfonos (Sin IVA):</span>
+                <span>Subtotal Datáfonos:</span>
                 <strong id="display-subtotal-datafonos">₡0</strong>
               </div>
               <div class="breakdown-row">
-                <span>IVA Aplicado (13%):</span>
-                <span id="display-iva-datafonos" class="text-amber">+₡0</span>
+                <span>Rebajo IVA (13%):</span>
+                <span id="display-iva-datafonos" class="text-amber">-₡0</span>
               </div>
               <div class="breakdown-row total-highlight">
-                <span>Total Datáfonos (+13% IVA):</span>
+                <span>Total Datáfonos (-13%):</span>
                 <strong id="display-total-datafonos" class="text-primary">₡0</strong>
               </div>
             </div>
@@ -247,7 +247,7 @@
             <div class="ventas-header">
               <div>
                 <span class="total-label">TOTAL VENTAS DEL DÍA</span>
-                <p class="formula-text">Efectivo + Datáfonos (+13%) + Créditos</p>
+                <p class="formula-text">Efectivo + Datáfonos (-13%) + Créditos</p>
               </div>
               <div class="total-amount" id="display-total-ventas">₡0</div>
             </div>
@@ -634,7 +634,7 @@
                 <th>Fecha (D/M/A)</th>
                 <th>Sede</th>
                 <th>Efectivo</th>
-                <th>Datáfonos (+13%)</th>
+                <th>Datáfonos (-13%)</th>
                 <th>Créditos</th>
                 <th>Venta Total (Cierre)</th>
                 <th>Empleados</th>
@@ -875,8 +875,8 @@
 
           <div class="edit-breakdown-row">
             <span>Subtotal: <strong id="edit-subtotal-datafonos">₡0</strong></span>
-            <span>+ IVA 13%: <strong id="edit-iva-datafonos">+₡0</strong></span>
-            <span>Total Datáfonos (+13%): <strong class="text-emerald" id="edit-total-datafonos">₡0</strong></span>
+            <span>- IVA 13%: <strong id="edit-iva-datafonos">-₡0</strong></span>
+            <span>Total Datáfonos (-13%): <strong class="text-emerald" id="edit-total-datafonos">₡0</strong></span>
           </div>
         </div>
 
