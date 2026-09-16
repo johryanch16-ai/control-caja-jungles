@@ -2181,19 +2181,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.target === pwaGuideModal) pwaGuideModal.style.display = 'none';
   });
 
-  // Control de Vistas por Dispositivo (Celular / Tablet / Escritorio)
-  const deviceButtons = document.querySelectorAll('.btn-device');
-  deviceButtons.forEach(btn => {
-    btn.addEventListener('click', () => {
-      deviceButtons.forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      const device = btn.dataset.device;
-      document.body.classList.remove('sim-mobile', 'sim-tablet', 'sim-desktop');
-      document.body.classList.add(`sim-${device}`);
-      const name = btn.querySelector('.device-name') ? btn.querySelector('.device-name').textContent : device;
-      showToast(`Vista cambiada a: ${name}`);
-    });
-  });
 
   // Inicializar slider deslizable de sedes
   initVenuesSlider();

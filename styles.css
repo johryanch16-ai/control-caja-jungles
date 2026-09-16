@@ -107,133 +107,14 @@ body.theme-consolidado .ambient-watermark-overlay {
 }
 
 /* ==========================================================================
-   BARRA SIMULADORA DE DISPOSITIVOS (MÓVIL / TABLET / ESCRITORIO)
+   CONTENEDOR PRINCIPAL FLUIDO Y RESPONSIVO
    ========================================================================== */
-.device-toolbar {
-  position: sticky;
-  top: 0;
-  z-index: 250;
-  background: #070a0f;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 8px 16px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.6);
-}
-
-.device-toolbar-inner {
-  max-width: 1100px;
-  margin: 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.device-toolbar-info {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.device-pulse-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #10b981;
-  box-shadow: 0 0 8px #10b981;
-}
-
-.device-title {
-  font-family: var(--font-heading);
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.device-buttons-group {
-  display: flex;
-  gap: 6px;
-}
-
-.btn-device {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: var(--text-secondary);
-  padding: 5px 12px;
-  border-radius: var(--radius-full);
-  font-family: var(--font-heading);
-  font-size: 0.78rem;
-  font-weight: 600;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-  transition: var(--transition);
-}
-
-.btn-device:hover {
-  background: rgba(255, 255, 255, 0.12);
-  color: var(--text-primary);
-}
-
-.btn-device.active {
-  background: #3b82f6;
-  border-color: #60a5fa;
-  color: #fff;
-  box-shadow: 0 0 12px rgba(59, 130, 246, 0.4);
-}
-
-.btn-device .device-res {
-  font-size: 0.68rem;
-  opacity: 0.8;
-  background: rgba(0, 0, 0, 0.3);
-  padding: 1px 6px;
-  border-radius: 10px;
-}
-
-/* Modos de Simulación */
 .viewport-wrapper {
   width: 100%;
-  transition: max-width 0.35s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.35s ease, margin 0.35s ease;
+  max-width: 1280px;
+  margin: 0 auto;
   position: relative;
   min-height: 100vh;
-}
-
-/* Celular Móvil (390px - iPhone / Android en Barra) */
-body.sim-mobile {
-  background: #030508;
-}
-body.sim-mobile .viewport-wrapper {
-  max-width: 414px;
-  margin: 20px auto 40px;
-  border-radius: 36px;
-  border: 10px solid #1a2233;
-  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.1);
-  overflow: hidden;
-  position: relative;
-}
-
-/* Tablet (768px - iPad / Terminal TPV) */
-body.sim-tablet {
-  background: #030508;
-}
-body.sim-tablet .viewport-wrapper {
-  max-width: 768px;
-  margin: 20px auto 40px;
-  border-radius: 24px;
-  border: 8px solid #1a2233;
-  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.1);
-  overflow: hidden;
-}
-
-/* Escritorio (100% fluido) */
-body.sim-desktop .viewport-wrapper {
-  max-width: 100%;
-  margin: 0 auto;
-  border: none;
-  box-shadow: none;
 }
 
 /* ==========================================================================
@@ -1799,9 +1680,9 @@ body.theme-chichera .metric-item.highlight-neto {
   box-sizing: border-box;
 }
 
-/* En pantallas de escritorio amplias sin simulador móvil, permitir 2 columnas con espacio adecuado */
+/* En pantallas de escritorio amplias, permitir 2 columnas con espacio adecuado */
 @media (min-width: 720px) {
-  body:not(.sim-mobile) .venues-slider-track .venue-detail-card {
+  .venues-slider-track .venue-detail-card {
     flex: 0 0 calc(50% - 7px);
     min-width: calc(50% - 7px);
     max-width: calc(50% - 7px);
@@ -2320,13 +2201,6 @@ body.theme-chichera .metric-item.highlight-neto {
   }
 }
 
-body.sim-mobile .desktop-history-table {
-  display: none !important;
-}
-
-body.sim-mobile .history-mobile-accordion {
-  display: flex !important;
-}
 
 /* ==========================================================================
    MODALES (TICKET DE COMPROBANTE Y RESPALDO)
@@ -2629,123 +2503,125 @@ body.sim-mobile .history-mobile-accordion {
 }
 
 /* ==========================================================================
-   AJUSTES RESPONSIVOS PRO PARA MÓVIL Y SIMULADOR (body.sim-mobile)
+   AJUSTES RESPONSIVOS PRO PARA PANTALLAS MÓVILES (< 480px)
    ========================================================================== */
-body.sim-mobile .venue-nav {
-  padding: 2px 6px 8px;
-  gap: 4px;
-}
+@media (max-width: 480px) {
+  .venue-nav {
+    padding: 2px 6px 8px;
+    gap: 4px;
+  }
 
-body.sim-mobile .nav-tab {
-  padding: 6px 2px;
-  font-size: 0.72rem;
-  gap: 2px;
-}
+  .nav-tab {
+    padding: 6px 2px;
+    font-size: 0.72rem;
+    gap: 2px;
+  }
 
-body.sim-mobile .tab-logo-wrapper {
-  width: 30px;
-  height: 30px;
-  margin-bottom: 2px;
-}
+  .tab-logo-wrapper {
+    width: 30px;
+    height: 30px;
+    margin-bottom: 2px;
+  }
 
-body.sim-mobile .tab-badge {
-  font-size: 0.62rem;
-  padding: 1px 4px;
-}
+  .tab-badge {
+    font-size: 0.62rem;
+    padding: 1px 4px;
+  }
 
-body.sim-mobile .main-container {
-  padding: 10px 8px 30px;
-}
+  .main-container {
+    padding: 10px 8px 30px;
+  }
 
-body.sim-mobile .card {
-  padding: 14px 12px;
-  border-radius: var(--radius-md);
-  margin-bottom: 12px;
-}
+  .card {
+    padding: 14px 12px;
+    border-radius: var(--radius-md);
+    margin-bottom: 12px;
+  }
 
-body.sim-mobile .ambient-watermark-overlay {
-  width: 75vmin;
-  height: 75vmin;
-  max-width: 310px;
-  opacity: 0.08 !important;
-}
+  .ambient-watermark-overlay {
+    width: 75vmin;
+    height: 75vmin;
+    max-width: 310px;
+    opacity: 0.08 !important;
+  }
 
-body.sim-mobile .venue-banner {
-  padding: 10px 12px;
-  margin-bottom: 14px;
-}
+  .venue-banner {
+    padding: 10px 12px;
+    margin-bottom: 14px;
+  }
 
-body.sim-mobile .venue-banner-content {
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 8px;
-}
+  .venue-banner-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
 
-body.sim-mobile .date-selector-wrapper {
-  width: 100%;
-  justify-content: space-between;
-}
+  .date-selector-wrapper {
+    width: 100%;
+    justify-content: space-between;
+  }
 
-body.sim-mobile .datafonos-grid {
-  grid-template-columns: 1fr;
-  gap: 8px;
-}
+  .datafonos-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
 
-body.sim-mobile .service-calculator-grid {
-  grid-template-columns: 1fr;
-  gap: 8px;
-}
+  .service-calculator-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
 
-body.sim-mobile .balance-metrics-grid {
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
+  .balance-metrics-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
 
-body.sim-mobile .metric-item:nth-child(3) {
-  grid-column: span 2;
-  display: flex;
-  flex-direction: row;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 12px;
-}
+  .metric-item:nth-child(3) {
+    grid-column: span 2;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+  }
 
-body.sim-mobile .metric-item.highlight-neto {
-  grid-column: span 2;
-  padding: 14px 10px;
-}
+  .metric-item.highlight-neto {
+    grid-column: span 2;
+    padding: 14px 10px;
+  }
 
-body.sim-mobile .secondary-actions-row {
-  grid-template-columns: 1.5fr 1fr;
-  gap: 8px;
-}
+  .secondary-actions-row {
+    grid-template-columns: 1.5fr 1fr;
+    gap: 8px;
+  }
 
-body.sim-mobile .metric-value-huge {
-  font-size: 1.8rem;
-}
+  .metric-value-huge {
+    font-size: 1.8rem;
+  }
 
-body.sim-mobile .total-amount {
-  font-size: 1.55rem;
-}
+  .total-amount {
+    font-size: 1.55rem;
+  }
 
-body.sim-mobile .quick-chips-row {
-  gap: 6px;
-}
+  .quick-chips-row {
+    gap: 6px;
+  }
 
-body.sim-mobile .chip-btn {
-  padding: 5px 10px;
-  font-size: 0.74rem;
-}
+  .chip-btn {
+    padding: 5px 10px;
+    font-size: 0.74rem;
+  }
 
-body.sim-mobile .dynamic-row {
-  grid-template-columns: 1.3fr 1fr 36px;
-  gap: 6px;
-  padding: 6px 8px;
-}
+  .dynamic-row {
+    grid-template-columns: 1.3fr 1fr 36px;
+    gap: 6px;
+    padding: 6px 8px;
+  }
 
-body.sim-mobile .btn-lg {
-  padding: 14px 18px;
-  font-size: 1rem;
+  .btn-lg {
+    padding: 14px 18px;
+    font-size: 1rem;
+  }
 }
 
 /* ==========================================================================
@@ -2840,9 +2716,6 @@ body.sim-mobile .btn-lg {
   .recibos-kpi-summary {
     grid-template-columns: repeat(2, 1fr);
   }
-}
-body.sim-mobile .recibos-kpi-summary {
-  grid-template-columns: repeat(2, 1fr);
 }
 
 .recibo-kpi-card {
@@ -2973,17 +2846,7 @@ body.sim-mobile .recibos-kpi-summary {
     border-radius: var(--radius-sm);
     padding: 8px;
   }
-}
-body.sim-mobile .recibo-prevista-banner {
-  grid-template-columns: 1fr 1fr;
-}
-body.sim-mobile .recibo-prevista-item.neto-col {
-  grid-column: span 2;
-  background: rgba(6, 182, 212, 0.1);
-  border: 1px solid rgba(6, 182, 212, 0.25);
-  border-radius: var(--radius-sm);
-  padding: 8px;
-}
+
 
 .recibo-prevista-item {
   display: flex;
@@ -3334,20 +3197,6 @@ body.sim-mobile .recibo-prevista-item.neto-col {
   }
 }
 
-body.sim-mobile .modal-card.modal-voucher-pro {
-  max-width: 375px;
-  margin: 10px auto;
-}
-body.sim-mobile .voucher-pdf-container {
-  padding: 16px 12px;
-}
-body.sim-mobile .voucher-venue-title {
-  font-size: 1.25rem;
-}
-body.sim-mobile .voucher-brand-badge {
-  width: 56px;
-  height: 56px;
-}
 /* ==========================================================================
    MODAL DE CONFIRMACIÓN (LIMPIAR FORMULARIO)
    ========================================================================== */
@@ -3479,9 +3328,6 @@ body.sim-mobile .voucher-brand-badge {
     grid-template-columns: 1fr;
   }
 }
-body.sim-mobile .edit-inputs-grid {
-  grid-template-columns: 1fr;
-}
 
 .edit-breakdown-row {
   display: flex;
@@ -3532,12 +3378,6 @@ body.sim-mobile .edit-inputs-grid {
   .edit-prevista-item.highlight {
     grid-column: span 2;
   }
-}
-body.sim-mobile .edit-prevista-banner {
-  grid-template-columns: 1fr 1fr;
-}
-body.sim-mobile .edit-prevista-item.highlight {
-  grid-column: span 2;
 }
 
 .edit-prevista-item {
