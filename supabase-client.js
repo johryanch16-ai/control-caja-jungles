@@ -193,6 +193,21 @@ const SupabaseService = (() => {
     }
   }
 
+  // Eliminar todos los cierres de la nube (dejar en 0)
+  async function deleteAllClosures() {
+    if (!client) initClient();
+    if (!client) return false;
+
+    try {
+      const { error } = await client.from('cierres').delete().neq('id', '___all_records_filter___');
+      if (error) throw error;
+      return true;
+    } catch (err) {
+      console.error('Error al vaciar Supabase:', err);
+      return false;
+    }
+  }
+
   // Subir todos los cierres locales a la nube (Sincronización masiva inicial)
   async function syncLocalToCloud(localClosures) {
     if (!client) initClient();
@@ -241,6 +256,7 @@ const SupabaseService = (() => {
     fetchClosures,
     saveClosure,
     deleteClosure,
+    deleteAllClosures,
     syncLocalToCloud,
     subscribeRealtime,
     initClient

@@ -6,7 +6,20 @@
 // ==========================================
 // CONFIGURACIÓN Y ESTADO INICIAL
 // ==========================================
-const STORAGE_KEY = 'control_caja_bares_db_v1';
+const STORAGE_KEY = 'control_caja_bares_db_v2';
+
+function getCleanDraft() {
+  return {
+    efectivo: 0,
+    datafono1: 0,
+    datafono2: 0,
+    creditos: [],
+    servicioPct: 10,
+    servicioMontoManual: null,
+    empleados: [],
+    notas: ''
+  };
+}
 
 const VENUES = {
   jungles: {
@@ -43,36 +56,18 @@ const VENUES = {
   }
 };
 
-// Estado global de la aplicación
+// Estado global de la aplicación (inicia completamente en 0)
 const AppState = {
   currentVenue: 'jungles', // 'jungles' | 'chichera' | 'consolidado'
   selectedDate: new Date().toISOString().split('T')[0],
   
-  // Borradores activos en memoria para cada local antes de guardar
+  // Borradores activos en memoria en ₡0
   drafts: {
-    jungles: {
-      efectivo: 0,
-      datafono1: 0,
-      datafono2: 0,
-      creditos: [],
-      servicioPct: 10,
-      servicioMontoManual: null,
-      empleados: [],
-      notas: ''
-    },
-    chichera: {
-      efectivo: 0,
-      datafono1: 0,
-      datafono2: 0,
-      creditos: [],
-      servicioPct: 10,
-      servicioMontoManual: null,
-      empleados: [],
-      notas: ''
-    }
+    jungles: getCleanDraft(),
+    chichera: getCleanDraft()
   },
 
-  // Base de datos de cierres históricos
+  // Base de datos de cierres históricos (vacía para producción)
   closures: []
 };
 
@@ -101,23 +96,44 @@ function formatDateDisplay(dateStr) {
 }
 
 // ==========================================
-// PERSISTENCIA EN LOCALSTORAGE CON DATOS SEMILLA
+// PERSISTENCIA EN LOCALSTORAGE (ESTADO LIMPIO EN 0)
 // ==========================================
+function initCleanState() {
+  AppState.closures = [];
+  AppState.drafts = {
+    jungles: getCleanDraft(),
+    chichera: getCleanDraft()
+  };
+  saveToStorage();
+}
+
 function loadFromStorage() {
   try {
+    // Si quedan rastros de versiones previas con datos demo, limpiarlos
+    if (localStorage.getItem('control_caja_bares_db_v1')) {
+      localStorage.removeItem('control_caja_bares_db_v1');
+    }
+
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      AppState.closures = parsed.closures || [];
+      // Filtrar posibles residuos de datos de demostración si existieran
+      const cleanClosures = (parsed.closures || []).filter(c => 
+        !c.id.startsWith('j_20') && !c.id.startsWith('c_20') && !c.id.startsWith('cl_seed')
+      );
+      AppState.closures = cleanClosures;
       if (parsed.drafts) {
-        AppState.drafts = { ...AppState.drafts, ...parsed.drafts };
+        AppState.drafts = {
+          jungles: { ...getCleanDraft(), ...parsed.drafts.jungles },
+          chichera: { ...getCleanDraft(), ...parsed.drafts.chichera }
+        };
       }
     } else {
-      seedInitialSampleData();
+      initCleanState();
     }
   } catch (err) {
     console.error('Error al cargar localStorage:', err);
-    seedInitialSampleData();
+    initCleanState();
   }
 }
 
@@ -134,125 +150,9 @@ function saveToStorage() {
   }
 }
 
-// Datos de demostración para que el consolidado muestre métricas semanales y mensuales de inmediato
 function seedInitialSampleData() {
-  const today = new Date();
-  const sampleClosures = [];
-
-  // Función auxiliar para fechas pasadas
-  const getPastDateStr = (daysAgo) => {
-    const d = new Date(today);
-    d.setDate(d.getDate() - daysAgo);
-    return d.toISOString().split('T')[0];
-  };
-
-  // Historial de la última semana para Jungles y La Chichera
-  const historyData = [
-    { daysAgo: 6, jEfectivo: 140000, jD1: 65000, jD2: 45000, cEfectivo: 125000, cD1: 50000, cD2: 40000 },
-    { daysAgo: 5, jEfectivo: 180000, jD1: 85000, jD2: 60000, cEfectivo: 160000, cD1: 70000, cD2: 55000 },
-    { daysAgo: 4, jEfectivo: 120000, jD1: 55000, jD2: 30000, cEfectivo: 110000, cD1: 45000, cD2: 35000 },
-    { daysAgo: 3, jEfectivo: 210000, jD1: 95000, jD2: 80000, cEfectivo: 195000, cD1: 90000, cD2: 75000 },
-    { daysAgo: 2, jEfectivo: 320000, jD1: 150000, jD2: 110000, cEfectivo: 280000, cD1: 130000, cD2: 105000 },
-    { daysAgo: 1, jEfectivo: 290000, jD1: 140000, jD2: 95000, cEfectivo: 260000, cD1: 120000, cD2: 90000 }
-  ];
-
-  historyData.forEach((row, idx) => {
-    const dateStr = getPastDateStr(row.daysAgo);
-
-    // Jungles cierre pasado
-    const jSubD = row.jD1 + row.jD2;
-    const jTotalD = jSubD * 1.13;
-    const jCred = [{ id: 'c1', name: 'Cliente Mesa VIP', amount: 25000 }];
-    const jTotCred = 25000;
-    const jTotVentas = row.jEfectivo + jTotalD + jTotCred;
-    const jEmp = [
-      { id: 'e1', name: 'Bartender Kevin', amount: 35000 },
-      { id: 'e2', name: 'Mesero David', amount: 25000 }
-    ];
-    const jTotEmp = 60000;
-
-    sampleClosures.push({
-      id: `j_${dateStr}_${idx}`,
-      date: dateStr,
-      venue: 'jungles',
-      efectivo: row.jEfectivo,
-      datafono1: row.jD1,
-      datafono2: row.jD2,
-      subtotalDatafonos: jSubD,
-      ivaDatafonos: jSubD * 0.13,
-      totalDatafonos: jTotalD,
-      creditos: jCred,
-      totalCreditos: jTotCred,
-      totalVentas: jTotVentas,
-      servicioPct: 10,
-      servicioMonto: jTotVentas * 0.10,
-      empleados: jEmp,
-      totalEmpleados: jTotEmp,
-      balanceNeto: jTotVentas - jTotEmp,
-      notas: 'Cierre de turno regular',
-      timestamp: new Date(dateStr + 'T23:59:00').toISOString()
-    });
-
-    // La Chichera cierre pasado
-    const cSubD = row.cD1 + row.cD2;
-    const cTotalD = cSubD * 1.13;
-    const cCred = [{ id: 'c2', name: 'Fiado Don Rodrigo', amount: 18000 }];
-    const cTotCred = 18000;
-    const cTotVentas = row.cEfectivo + cTotalD + cTotCred;
-    const cEmp = [
-      { id: 'e3', name: 'Bartender Andrés', amount: 30000 },
-      { id: 'e4', name: 'Seguridad / Puerta', amount: 20000 }
-    ];
-    const cTotEmp = 50000;
-
-    sampleClosures.push({
-      id: `c_${dateStr}_${idx}`,
-      date: dateStr,
-      venue: 'chichera',
-      efectivo: row.cEfectivo,
-      datafono1: row.cD1,
-      datafono2: row.cD2,
-      subtotalDatafonos: cSubD,
-      ivaDatafonos: cSubD * 0.13,
-      totalDatafonos: cTotalD,
-      creditos: cCred,
-      totalCreditos: cTotCred,
-      totalVentas: cTotVentas,
-      servicioPct: 10,
-      servicioMonto: cTotVentas * 0.10,
-      empleados: cEmp,
-      totalEmpleados: cTotEmp,
-      balanceNeto: cTotVentas - cTotEmp,
-      notas: 'Cierre nocturno La Chichera',
-      timestamp: new Date(dateStr + 'T23:59:00').toISOString()
-    });
-  });
-
-  // Valores para hoy en borradores para que al entrar haya datos vivos
-  AppState.drafts.jungles.efectivo = 185000;
-  AppState.drafts.jungles.datafono1 = 92000;
-  AppState.drafts.jungles.datafono2 = 68000;
-  AppState.drafts.jungles.creditos = [
-    { id: 'cr_1', name: 'Carlos Morales (Barra)', amount: 15000 },
-    { id: 'cr_2', name: 'Mesa 4 Terraza', amount: 22500 }
-  ];
-  AppState.drafts.jungles.empleados = [
-    { id: 'em_1', name: 'Bryan (Bartender)', amount: 35000 },
-    { id: 'em_2', name: 'Esteban (Mesero)', amount: 25000 }
-  ];
-
-  AppState.drafts.chichera.efectivo = 160000;
-  AppState.drafts.chichera.datafono1 = 75000;
-  AppState.drafts.chichera.datafono2 = 55000;
-  AppState.drafts.chichera.creditos = [
-    { id: 'cr_3', name: 'Fiado Luis Alberto', amount: 14000 }
-  ];
-  AppState.drafts.chichera.empleados = [
-    { id: 'em_3', name: 'Manuel (Barman)', amount: 30000 }
-  ];
-
-  AppState.closures = sampleClosures;
-  saveToStorage();
+  // En producción no se inyectan datos de demostración, el sistema se mantiene en 0
+  initCleanState();
 }
 
 // ==========================================
@@ -2149,16 +2049,53 @@ document.addEventListener('DOMContentLoaded', () => {
     reader.readAsText(file);
   });
 
-  // Recargar datos semilla
-  document.getElementById('btn-reset-sample-data').addEventListener('click', () => {
-    if (confirm('¿Restablecer datos a la configuración inicial de demostración? Se sobreescribirán los datos actuales.')) {
-      seedInitialSampleData();
-      populateFormWithDraft(AppState.currentVenue);
-      if (AppState.currentVenue === 'consolidado') renderConsolidadoView();
-      modalBackup.style.display = 'none';
-      showToast('Datos de demostración cargados.');
+  // ===== DEJAR TODO EN 0 (borrar todos los recibos, borradores, y nube) =====
+  document.getElementById('btn-reset-all-system').addEventListener('click', async () => {
+    if (!confirm('⚠️ ¿Estás seguro de BORRAR TODOS los recibos y datos?\n\nEsto eliminará:\n• Todos los recibos guardados\n• Todos los borradores activos\n• Datos en la nube (Supabase)\n\nEsta acción NO se puede deshacer.')) return;
+    if (!confirm('🔴 CONFIRMAR: ¿Realmente deseas dejar TODO en 0?')) return;
+
+    // Limpiar estado local
+    initCleanState();
+    populateFormWithDraft(AppState.currentVenue);
+    renderConsolidadoView();
+    renderHistoryTable();
+    renderRecibosView();
+    updateHeaderBadges();
+
+    // Limpiar Supabase si está configurado
+    if (typeof SupabaseService !== 'undefined' && SupabaseService.isConfigured()) {
+      await SupabaseService.deleteAllClosures();
     }
+
+    modalBackup.style.display = 'none';
+    showToast('✅ Sistema limpio. Todo está en ₡0, listo para empezar.');
   });
+
+  // ===== VACIAR RECIBOS (botón en vista de Recibos) =====
+  const btnVaciarRecibos = document.getElementById('btn-vaciar-recibos');
+  if (btnVaciarRecibos) {
+    btnVaciarRecibos.addEventListener('click', async () => {
+      if (AppState.closures.length === 0) {
+        showToast('No hay recibos para eliminar.');
+        return;
+      }
+      if (!confirm(`⚠️ ¿Eliminar los ${AppState.closures.length} recibos guardados?\n\nEsta acción NO se puede deshacer.`)) return;
+
+      AppState.closures = [];
+      saveToStorage();
+      renderRecibosView();
+      renderConsolidadoView();
+      renderHistoryTable();
+      updateHeaderBadges();
+
+      // Limpiar Supabase si está configurado
+      if (typeof SupabaseService !== 'undefined' && SupabaseService.isConfigured()) {
+        await SupabaseService.deleteAllClosures();
+      }
+
+      showToast('✅ Todos los recibos eliminados. Sistema en 0.');
+    });
+  }
 
   // Cerrar modales clickeando afuera
   window.addEventListener('click', (e) => {
