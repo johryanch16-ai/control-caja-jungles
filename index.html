@@ -51,12 +51,6 @@
       </div>
 
       <div class="header-actions">
-        <!-- Botón Instalar App PWA -->
-        <button type="button" class="btn-install-pwa" id="btn-install-pwa" title="Instalar App con el logo de Jungles en tu celular">
-          <span class="install-pwa-icon">📲</span>
-          <span class="install-pwa-text">Instalar App</span>
-        </button>
-
         <!-- Indicador Nube Supabase -->
         <button type="button" class="btn-cloud-badge" id="btn-cloud-modal-trigger" title="Estado de sincronización y configuración de Supabase">
           <span class="cloud-status-dot status-offline" id="cloud-status-dot"></span>
@@ -783,6 +777,10 @@
             📤 Restaurar Copia de Seguridad
             <input type="file" id="input-import-backup" accept=".json" style="display: none;">
           </label>
+
+          <button type="button" class="btn btn-outline btn-block" id="btn-open-pwa-guide">
+            📱 Guía para Instalar como App en Celular
+          </button>
 
           <button type="button" class="btn btn-outline btn-block text-danger" id="btn-reset-sample-data">
             🔄 Recargar Datos de Demostración

@@ -2202,17 +2202,11 @@ let deferredPrompt = null;
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   deferredPrompt = e;
-  const btnInstall = document.getElementById('btn-install-pwa');
-  if (btnInstall) {
-    btnInstall.style.display = 'inline-flex';
-  }
 });
 
 window.addEventListener('appinstalled', () => {
   deferredPrompt = null;
-  const btnInstall = document.getElementById('btn-install-pwa');
-  if (btnInstall) btnInstall.style.display = 'none';
-  showToast('🎉 ¡App de Jungles instalada con éxito en tu pantalla de inicio!');
+  showToast('🎉 ¡App de Jungles agregada con éxito a tu pantalla de inicio!');
 });
 
 // Registro de Service Worker para PWA
@@ -2225,25 +2219,17 @@ if ('serviceWorker' in navigator) {
 }
 
 function initPwaInstallUI() {
-  const btnInstall = document.getElementById('btn-install-pwa');
   const modalGuide = document.getElementById('modal-install-pwa-guide');
   const btnCloseGuide = document.getElementById('btn-close-pwa-guide');
   const btnTriggerInstall = document.getElementById('btn-trigger-native-install');
+  const btnOpenGuide = document.getElementById('btn-open-pwa-guide');
 
-  if (btnInstall) {
-    btnInstall.style.display = 'inline-flex';
-    btnInstall.addEventListener('click', () => {
-      if (deferredPrompt) {
-        deferredPrompt.prompt();
-        deferredPrompt.userChoice.then((choiceResult) => {
-          if (choiceResult.outcome === 'accepted') {
-            btnInstall.style.display = 'none';
-          }
-          deferredPrompt = null;
-        });
-      } else {
-        if (modalGuide) modalGuide.style.display = 'flex';
-      }
+  // Abrir guía desde el modal de respaldo/opciones
+  if (btnOpenGuide) {
+    btnOpenGuide.addEventListener('click', () => {
+      const modalBackup = document.getElementById('modal-backup');
+      if (modalBackup) modalBackup.style.display = 'none';
+      if (modalGuide) modalGuide.style.display = 'flex';
     });
   }
 
@@ -2262,7 +2248,7 @@ function initPwaInstallUI() {
           if (modalGuide) modalGuide.style.display = 'none';
         });
       } else {
-        showToast('En iPhone/Android: Usa el menú del navegador "Añadir a pantalla de inicio"');
+        showToast('💡 En tu navegador toca "Compartir" o Menú (⋮) y elige "Añadir a pantalla de inicio"');
         if (modalGuide) modalGuide.style.display = 'none';
       }
     });
