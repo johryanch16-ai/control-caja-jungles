@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Control de Caja y Ventas | Jungles & La Chichera</title>
+  <meta name="description" content="Sistema de control de caja diaria y ventas multi-sede para Jungles Bar y La Chichera con cálculo de IVA, 10% ley, pagos de personal y consolidado de negocios.">
+  
+  <!-- Favicon y PWA App Icons Oficiales (Jungles Bar) -->
+  <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon.png">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#10b981">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Jungles Caja">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="styles.css">
+
+  <!-- SDK Supabase (CDN) y Servicio de Nube -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-client.js"></script>
+</head>
+<body class="theme-jungles" id="app-body">
+
+  <!-- SELECTOR DE VISTA POR DISPOSITIVO (CELULAR / TABLET / ESCRITORIO) -->
+  <aside class="device-toolbar" id="device-toolbar" aria-label="Simulador de vistas de dispositivos">
+    <div class="device-toolbar-inner">
+      <div class="device-toolbar-info">
+        <span class="device-pulse-dot"></span>
+        <span class="device-title">Simulador de Dispositivos:</span>
+      </div>
+      <div class="device-buttons-group">
+        <button type="button" class="btn-device" data-device="mobile" id="btn-device-mobile" title="Vista Teléfono Celular (390px)">
+          <span class="device-icon">📱</span>
+          <span class="device-name">Celular Móvil</span>
+          <span class="device-res">390px</span>
+        </button>
+        <button type="button" class="btn-device" data-device="tablet" id="btn-device-tablet" title="Vista Tablet / TPV (768px)">
+          <span class="device-icon">📋</span>
+          <span class="device-name">Tablet TPV</span>
+          <span class="device-res">768px</span>
+        </button>
+        <button type="button" class="btn-device active" data-device="desktop" id="btn-device-desktop" title="Vista Escritorio Completa">
+          <span class="device-icon">💻</span>
+          <span class="device-name">Escritorio</span>
+          <span class="device-res">100%</span>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- CONTENEDOR ENMARCADO PARA SIMULACIÓN DE DISPOSITIVOS -->
+  <div class="viewport-wrapper" id="viewport-wrapper">
+
+    <!-- MARCA DE AGUA AMBIENTAL DINÁMICA -->
+    <div class="ambient-watermark-container" aria-hidden="true">
+      <div class="ambient-watermark-overlay" id="ambient-watermark"></div>
+    </div>
+
+  <!-- HEADER PRINCIPAL -->
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="header-branding">
+        <div class="brand-avatar-wrapper" id="brand-avatar-wrapper">
+          <img id="header-brand-logo" src="assets/jungles_logo.jpg" alt="Logo Sede" class="brand-avatar-img">
+        </div>
+        <div>
+          <h1 class="header-title" id="header-title">Jungles Bar</h1>
+          <p class="header-subtitle">Control de Caja &middot; <span id="current-date-badge">Hoy</span></p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <!-- Botón Instalar App PWA -->
+        <button type="button" class="btn-install-pwa" id="btn-install-pwa" title="Instalar App con el logo de Jungles en tu celular">
+          <span class="install-pwa-icon">📲</span>
+          <span class="install-pwa-text">Instalar App</span>
+        </button>
+
+        <!-- Indicador Nube Supabase -->
+        <button type="button" class="btn-cloud-badge" id="btn-cloud-modal-trigger" title="Estado de sincronización y configuración de Supabase">
+          <span class="cloud-status-dot status-offline" id="cloud-status-dot"></span>
+          <span class="cloud-status-text" id="cloud-status-text">Local</span>
+        </button>
+
+        <button type="button" class="btn-icon" id="btn-backup-menu" title="Respaldar / Opciones de datos" aria-label="Opciones de datos">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+            <polyline points="17 21 17 13 7 13 7 21"></polyline>
+            <polyline points="7 3 7 8 15 8"></polyline>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- SELECTOR DE SEDE Y PESTAÑAS (TOUCH FRIENDLY CON LOGOS OFICIALES) -->
+    <nav class="venue-nav" aria-label="Selector de sede y vistas">
+      <button type="button" class="nav-tab active" id="tab-jungles" data-venue="jungles">
+        <div class="tab-logo-wrapper tab-logo-jungles">
+          <img src="assets/jungles_logo.jpg" alt="Jungles Logo" class="tab-logo-img">
+        </div>
+        <span class="tab-label">Jungles</span>
+        <span class="tab-badge" id="badge-sales-jungles">₡0</span>
+      </button>
+
+      <button type="button" class="nav-tab" id="tab-chichera" data-venue="chichera">
+        <div class="tab-logo-wrapper tab-logo-chichera">
+          <img src="assets/chichera_logo.jpg" alt="La Chichera Logo" class="tab-logo-img">
+        </div>
+        <span class="tab-label">La Chichera</span>
+        <span class="tab-badge" id="badge-sales-chichera">₡0</span>
+      </button>
+
+      <button type="button" class="nav-tab" id="tab-consolidado" data-venue="consolidado">
+        <div class="tab-logo-wrapper tab-logo-consolidado">
+          <div class="dual-mini-avatar">
+            <img src="assets/jungles_logo.jpg" alt="Jungles" class="dual-avatar-img avatar-left">
+            <img src="assets/chichera_logo.jpg" alt="La Chichera" class="dual-avatar-img avatar-right">
+          </div>
+        </div>
+        <span class="tab-label">Consolidado</span>
+      </button>
+
+      <button type="button" class="nav-tab" id="tab-recibos" data-venue="recibos">
+        <div class="tab-logo-wrapper tab-logo-recibos">
+          <span class="receipt-icon-badge">🧾</span>
+        </div>
+        <span class="tab-label">Recibos</span>
+        <span class="tab-badge" id="badge-count-total-recibos">0</span>
+      </button>
+    </nav>
+  </header>
+
+  <!-- CONTENEDOR PRINCIPAL -->
+  <main class="main-container">
+
+    <!-- ============================================== -->
+    <!-- VISTA 1 & 2: CAJA DIARIA DE LOCAL (JUNGLES / CHICHERA) -->
+    <!-- ============================================== -->
+    <section id="section-venue-cash" class="venue-cash-section">
+      
+      <!-- Banner informativo de la sede actual -->
+      <div class="venue-banner glass-card" id="venue-banner">
+        <div class="venue-banner-content">
+          <div class="venue-badge-chip" id="venue-chip">
+            <span class="status-indicator"></span>
+            <span id="venue-chip-text">Sede Activa: Jungles Bar</span>
+          </div>
+          <div class="date-selector-wrapper">
+            <label for="input-closure-date" class="label-inline">Fecha de Caja:</label>
+            <input type="date" id="input-closure-date" class="date-input" aria-label="Fecha de caja">
+          </div>
+        </div>
+      </div>
+
+      <!-- FORMULARIO DE CAJA DIARIA -->
+      <form id="cash-form" class="cash-form" onsubmit="event.preventDefault();">
+
+        <!-- ========================================= -->
+        <!-- MÓDULO DE INGRESOS (CAJA DIARIA) -->
+        <!-- ========================================= -->
+        <div class="form-block">
+          <div class="block-header">
+            <div class="block-icon">💵</div>
+            <div>
+              <h2 class="block-title">Módulo de Ingresos</h2>
+              <p class="block-description">Efectivo, cobros con tarjeta e IVA y registro de créditos</p>
+            </div>
+          </div>
+
+          <!-- 1. Campo Efectivo -->
+          <div class="card form-card">
+            <div class="field-header">
+              <label for="input-efectivo" class="field-title">Efectivo en Caja</label>
+              <span class="field-helper">Billetes y monedas en barra</span>
+            </div>
+            
+            <div class="input-currency-wrapper">
+              <span class="currency-prefix">₡</span>
+              <input type="number" id="input-efectivo" class="input-currency" placeholder="0" min="0" step="100" inputmode="numeric">
+            </div>
+
+            <!-- Quick Add Chips para celular -->
+            <div class="quick-chips-row">
+              <button type="button" class="chip-btn" data-add-efectivo="5000">+₡5.000</button>
+              <button type="button" class="chip-btn" data-add-efectivo="10000">+₡10.000</button>
+              <button type="button" class="chip-btn" data-add-efectivo="20000">+₡20.000</button>
+              <button type="button" class="chip-btn" data-add-efectivo="50000">+₡50.000</button>
+              <button type="button" class="chip-btn chip-clear" id="btn-clear-efectivo">Limpiar</button>
+            </div>
+          </div>
+
+          <!-- 2. Datáfonos (1 + 2) con 13% de IVA -->
+          <div class="card form-card card-datafonos">
+            <div class="field-header">
+              <div class="title-with-badge">
+                <span class="field-title">Datáfonos (Tarjetas)</span>
+                <span class="badge-iva">+13% IVA Auto</span>
+              </div>
+              <span class="field-helper">Suma Datáfono 1 + Datáfono 2 multiplicado por 1.13</span>
+            </div>
+
+            <div class="datafonos-grid">
+              <div class="datafono-input-group">
+                <label for="input-datafono-1" class="input-sublabel">Datáfono 1</label>
+                <div class="input-currency-wrapper small">
+                  <span class="currency-prefix">₡</span>
+                  <input type="number" id="input-datafono-1" class="input-currency" placeholder="0" min="0" step="100" inputmode="numeric">
+                </div>
+              </div>
+
+              <div class="datafono-input-group">
+                <label for="input-datafono-2" class="input-sublabel">Datáfono 2</label>
+                <div class="input-currency-wrapper small">
+                  <span class="currency-prefix">₡</span>
+                  <input type="number" id="input-datafono-2" class="input-currency" placeholder="0" min="0" step="100" inputmode="numeric">
+                </div>
+              </div>
+            </div>
+
+            <!-- Desglose de cálculo IVA -->
+            <div class="datafono-breakdown">
+              <div class="breakdown-row">
+                <span>Subtotal Datáfonos (Sin IVA):</span>
+                <strong id="display-subtotal-datafonos">₡0</strong>
+              </div>
+              <div class="breakdown-row">
+                <span>IVA Aplicado (13%):</span>
+                <span id="display-iva-datafonos" class="text-amber">+₡0</span>
+              </div>
+              <div class="breakdown-row total-highlight">
+                <span>Total Datáfonos (+13% IVA):</span>
+                <strong id="display-total-datafonos" class="text-primary">₡0</strong>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3. Sección Dinámica Créditos / Fiados -->
+          <div class="card form-card">
+            <div class="card-header-actions">
+              <div>
+                <div class="title-with-badge">
+                  <span class="field-title">Créditos / Fiados</span>
+                  <span class="badge-count" id="badge-count-creditos">0 cuentas</span>
+                </div>
+                <span class="field-helper">Cuentas pendientes por cobrar de clientes</span>
+              </div>
+              <button type="button" class="btn btn-add-action" id="btn-add-credito" title="Añadir nueva cuenta de crédito">
+                <span class="add-icon-badge">➕</span>
+                <span>Añadir</span>
+              </button>
+            </div>
+
+            <div id="creditos-container" class="dynamic-rows-container">
+              <!-- Las filas de crédito se generan dinámicamente -->
+              <div class="empty-state-card" id="empty-creditos">
+                <p>No hay créditos o cuentas fiadas registradas hoy.</p>
+                <button type="button" class="btn btn-add-action btn-sm" id="btn-add-credito-empty" style="margin-top: 8px;">
+                  <span class="add-icon-badge">➕</span>
+                  <span>Registrar Primer Cliente Fiado</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="subtotal-bar">
+              <span>Total Créditos / Fiados:</span>
+              <strong id="display-total-creditos">₡0</strong>
+            </div>
+          </div>
+
+          <!-- RESUMEN TOTAL VENTAS DEL DÍA -->
+          <div class="card total-ventas-card">
+            <div class="ventas-header">
+              <div>
+                <span class="total-label">TOTAL VENTAS DEL DÍA</span>
+                <p class="formula-text">Efectivo + Datáfonos (+13%) + Créditos</p>
+              </div>
+              <div class="total-amount" id="display-total-ventas">₡0</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ========================================= -->
+        <!-- MÓDULO DE EMPLEADOS Y 10% DE LEY -->
+        <!-- ========================================= -->
+        <div class="form-block">
+          <div class="block-header">
+            <div class="block-icon">👥</div>
+            <div>
+              <h2 class="block-title">Módulo de Empleados & Servicio</h2>
+              <p class="block-description">10% de ley proyectado y registro de pagos al personal</p>
+            </div>
+          </div>
+
+          <!-- 1. Bloque 10% de Servicio / Ley -->
+          <div class="card form-card">
+            <div class="card-header-actions">
+              <div>
+                <div class="title-with-badge">
+                  <span class="field-title">10% de Servicio / Ley</span>
+                  <span class="badge-service" id="badge-service-status">Automático</span>
+                </div>
+                <span class="field-helper">Calculado sobre el Total de Ventas. Editable si es necesario.</span>
+              </div>
+              <div class="service-pct-control">
+                <label for="input-servicio-pct" class="label-pct">%:</label>
+                <input type="number" id="input-servicio-pct" class="input-pct" value="10" min="0" max="100" step="0.5">
+              </div>
+            </div>
+
+            <div class="service-calculator-grid">
+              <div class="service-info-box">
+                <span class="info-label">10% Proyectado sobre Ventas:</span>
+                <strong class="info-value" id="display-servicio-proyectado">₡0</strong>
+              </div>
+
+              <div class="service-override-box">
+                <label for="input-servicio-monto" class="override-label">Monto de Servicio (Final/Ajustable):</label>
+                <div class="input-currency-wrapper small">
+                  <span class="currency-prefix">₡</span>
+                  <input type="number" id="input-servicio-monto" class="input-currency" placeholder="0" min="0" step="100" inputmode="numeric">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. Pagos a Empleados (Dinámico) -->
+          <div class="card form-card">
+            <div class="card-header-actions">
+              <div>
+                <div class="title-with-badge">
+                  <span class="field-title">Pagos a Empleados</span>
+                  <span class="badge-count" id="badge-count-empleados">0 pagos</span>
+                </div>
+                <span class="field-helper">Turnos, extras, propinas o adelantos pagados en efectivo</span>
+              </div>
+              <button type="button" class="btn btn-add-action" id="btn-add-empleado" title="Añadir nuevo pago a personal">
+                <span class="add-icon-badge">➕</span>
+                <span>Añadir</span>
+              </button>
+            </div>
+
+            <div id="empleados-container" class="dynamic-rows-container">
+              <div class="empty-state-card" id="empty-empleados">
+                <p>No hay pagos a empleados registrados hoy.</p>
+                <button type="button" class="btn btn-add-action btn-sm" id="btn-add-empleado-empty" style="margin-top: 8px;">
+                  <span class="add-icon-badge">➕</span>
+                  <span>Registrar Primer Pago de Personal</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="subtotal-bar">
+              <span>Total Pagado a Empleados:</span>
+              <strong id="display-total-empleados" class="text-danger">₡0</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- ========================================= -->
+        <!-- BALANCE FINAL DIARIO (POR LOCAL) -->
+        <!-- ========================================= -->
+        <div class="form-block balance-block">
+          <div class="block-header">
+            <div class="block-icon">⚖️</div>
+            <div>
+              <h2 class="block-title">Balance Final Diario</h2>
+              <p class="block-description">Total Ventas del Día menos Total Pagado a Empleados</p>
+            </div>
+          </div>
+
+          <div class="balance-summary-card">
+            <div class="balance-metrics-grid">
+              <div class="metric-item">
+                <span class="metric-label">Ventas Totales</span>
+                <span class="metric-value text-emerald" id="summary-ventas">₡0</span>
+              </div>
+
+              <div class="metric-item">
+                <span class="metric-label">Total Empleados</span>
+                <span class="metric-value text-rose" id="summary-empleados">-₡0</span>
+              </div>
+
+              <div class="metric-item">
+                <span class="metric-label">10% Ley (Informativo)</span>
+                <span class="metric-value text-amber" id="summary-servicio">₡0</span>
+              </div>
+
+              <div class="metric-item highlight-neto">
+                <span class="metric-label">TOTAL FINAL NETO EN CAJA</span>
+                <span class="metric-value-huge" id="summary-total-neto">₡0</span>
+                <span class="metric-sublabel">Disponible tras liquidar personal</span>
+              </div>
+            </div>
+
+            <!-- Notas de cierre opcionales -->
+            <div class="closure-notes-wrapper">
+              <label for="input-closure-notes" class="input-sublabel">Observaciones / Novedades del Turno (Opcional):</label>
+              <textarea id="input-closure-notes" class="notes-textarea" rows="2" placeholder="Ej: Hubo evento de fútbol, faltante de cambio en barra..."></textarea>
+            </div>
+
+            <!-- Botones de Acción de Cierre -->
+            <div class="balance-actions-group">
+              <button type="button" class="btn btn-primary btn-lg btn-block" id="btn-save-closure">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                  <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                  <polyline points="7 3 7 8 15 8"></polyline>
+                </svg>
+                <span>Cerrar y Guardar Caja Diaria</span>
+              </button>
+
+              <div class="secondary-actions-row">
+                <button type="button" class="btn btn-secondary" id="btn-share-whatsapp">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z"/>
+                  </svg>
+                  <span>Compartir Resumen</span>
+                </button>
+
+                <button type="button" class="btn btn-outline" id="btn-reset-form" title="Limpiar formulario">
+                  <span>Limpiar</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </form>
+    </section>
+
+    <!-- ============================================== -->
+    <!-- VISTA 3: PANEL CONSOLIDADO / RESUMEN DE NEGOCIOS -->
+    <!-- ============================================== -->
+    <section id="section-consolidado" class="consolidado-section" style="display: none;">
+      
+      <!-- Encabezado del Consolidado -->
+      <div class="consolidado-header glass-card">
+        <div>
+          <h2 class="consolidado-title">Resumen Consolidado de Negocios</h2>
+          <p class="consolidado-subtitle">Control integral de ingresos de Jungles Bar y La Chichera</p>
+        </div>
+
+        <!-- Filtro de Fecha / Período -->
+        <div class="consolidado-filters">
+          <div class="period-pills">
+            <button type="button" class="pill-btn active" data-period="hoy">Hoy</button>
+            <button type="button" class="pill-btn" data-period="semana">Esta Semana</button>
+            <button type="button" class="pill-btn" data-period="mes">Este Mes</button>
+            <button type="button" class="pill-btn" data-period="todo">Todo</button>
+          </div>
+
+          <div class="date-filter-inline">
+            <label for="filter-specific-date" class="label-inline">Fecha:</label>
+            <input type="date" id="filter-specific-date" class="date-input" title="Filtrar por fecha específica">
+          </div>
+        </div>
+      </div>
+
+      <!-- GRAN TOTAL COMBINADO (TARJETA MAESTRA) -->
+      <div class="card gran-total-card">
+        <div class="gran-total-header">
+          <div class="crest-badges">
+            <div class="brand-crest-chip chip-jungles">
+              <img src="assets/jungles_logo.jpg" alt="Jungles Bar" class="crest-chip-img">
+              <span class="crest-chip-name">Jungles Bar</span>
+            </div>
+            <span class="crest-plus-symbol">+</span>
+            <div class="brand-crest-chip chip-chichera">
+              <img src="assets/chichera_logo.jpg" alt="La Chichera" class="crest-chip-img">
+              <span class="crest-chip-name">La Chichera</span>
+            </div>
+          </div>
+          <span class="badge-status-period" id="consolidado-period-badge">Período: Hoy</span>
+        </div>
+
+        <div class="gran-total-grid">
+          <div class="gran-kpi main-kpi">
+            <span class="gran-kpi-label">GRAN TOTAL VENTAS COMBINADO</span>
+            <span class="gran-kpi-value" id="grand-total-ventas">₡0</span>
+            <span class="gran-kpi-sub">Suma total de ambos locales</span>
+          </div>
+
+          <div class="gran-kpi-row">
+            <div class="gran-kpi mini">
+              <span class="gran-kpi-label">Ventas Jungles</span>
+              <span class="gran-kpi-value text-emerald" id="grand-jungles-ventas">₡0</span>
+            </div>
+
+            <div class="gran-kpi mini">
+              <span class="gran-kpi-label">Ventas La Chichera</span>
+              <span class="gran-kpi-value text-amber" id="grand-chichera-ventas">₡0</span>
+            </div>
+
+            <div class="gran-kpi mini">
+              <span class="gran-kpi-label">Pagos Empleados Total</span>
+              <span class="gran-kpi-value text-rose" id="grand-total-empleados">₡0</span>
+            </div>
+
+            <div class="gran-kpi mini">
+              <span class="gran-kpi-label">Balance Neto Total</span>
+              <span class="gran-kpi-value text-cyan" id="grand-total-neto">₡0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Barra Comparativa de Participación -->
+        <div class="participation-bar-wrapper">
+          <div class="participation-labels">
+            <span id="label-share-jungles">🌴 Jungles: 50%</span>
+            <span id="label-share-chichera">🍺 La Chichera: 50%</span>
+          </div>
+          <div class="progress-bar-track">
+            <div class="progress-fill-jungles" id="fill-share-jungles" style="width: 50%;"></div>
+            <div class="progress-fill-chichera" id="fill-share-chichera" style="width: 50%;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DESGLOSE COMPARATIVO POR LOCAL CON SLIDER DESLIZABLE (SWIPE) -->
+      <div class="venues-carousel-container">
+        <div class="venues-carousel-header">
+          <div class="carousel-title-group">
+            <span class="carousel-label">Comparativa de Sedes</span>
+            <span class="carousel-swipe-hint">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M7 16l-4-4m0 0l4-4m-4 4h18"></path>
+              </svg>
+              Desliza para alternar
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17 8l4 4m0 0l-4 4m4-4H3"></path>
+              </svg>
+            </span>
+          </div>
+
+          <!-- Pestañas de deslizamiento rápido con logos -->
+          <div class="venues-carousel-pills" id="venues-carousel-pills">
+            <button type="button" class="carousel-pill active" id="pill-slide-jungles" data-slide="0">
+              <img src="assets/jungles_logo.jpg" alt="Jungles" class="pill-logo-avatar avatar-jungles">
+              <span>Jungles Bar</span>
+            </button>
+            <button type="button" class="carousel-pill" id="pill-slide-chichera" data-slide="1">
+              <img src="assets/chichera_logo.jpg" alt="La Chichera" class="pill-logo-avatar avatar-chichera">
+              <span>La Chichera</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Pista Deslizable (Swipe Track) -->
+        <div class="venues-slider-wrapper" id="venues-slider-wrapper">
+          <div class="venues-slider-track" id="venues-slider-track">
+            
+            <!-- Tarjeta 1: Jungles Bar -->
+            <div class="card venue-detail-card card-jungles-detail" id="slide-card-jungles">
+              <div class="venue-card-header">
+                <div class="venue-card-brand">
+                  <img src="assets/jungles_logo.jpg" alt="Jungles Bar" class="venue-card-logo">
+                  <div>
+                    <h3 class="venue-card-name">Jungles Bar</h3>
+                    <span class="venue-card-tag">Sede 1 &middot; Bar Tropical</span>
+                  </div>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline" id="btn-goto-jungles">Ir a Caja</button>
+              </div>
+
+              <div class="periods-metrics-list">
+                <div class="period-metric-row">
+                  <span class="metric-name">Ventas del Día (Hoy):</span>
+                  <strong class="metric-val text-emerald" id="j-metric-dia">₡0</strong>
+                </div>
+                <div class="period-metric-row">
+                  <span class="metric-name">Acumulado Semanal (7 días):</span>
+                  <strong class="metric-val" id="j-metric-semana">₡0</strong>
+                </div>
+                <div class="period-metric-row">
+                  <span class="metric-name">Acumulado Mensual (Mes en curso):</span>
+                  <strong class="metric-val" id="j-metric-mes">₡0</strong>
+                </div>
+                <div class="period-metric-divider"></div>
+                <div class="period-metric-row">
+                  <span class="metric-name">Total Empleados (Período):</span>
+                  <span class="metric-val text-rose" id="j-metric-empleados">-₡0</span>
+                </div>
+                <div class="period-metric-row total-row">
+                  <span class="metric-name">Balance Neto en Caja:</span>
+                  <strong class="metric-val text-emerald" id="j-metric-neto">₡0</strong>
+                </div>
+              </div>
+            </div>
+
+            <!-- Tarjeta 2: La Chichera -->
+            <div class="card venue-detail-card card-chichera-detail" id="slide-card-chichera">
+              <div class="venue-card-header">
+                <div class="venue-card-brand">
+                  <img src="assets/chichera_logo.jpg" alt="La Chichera" class="venue-card-logo">
+                  <div>
+                    <h3 class="venue-card-name">La Chichera</h3>
+                    <span class="venue-card-tag">Sede 2 &middot; By Flubers</span>
+                  </div>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline" id="btn-goto-chichera">Ir a Caja</button>
+              </div>
+
+              <div class="periods-metrics-list">
+                <div class="period-metric-row">
+                  <span class="metric-name">Ventas del Día (Hoy):</span>
+                  <strong class="metric-val text-amber" id="c-metric-dia">₡0</strong>
+                </div>
+                <div class="period-metric-row">
+                  <span class="metric-name">Acumulado Semanal (7 días):</span>
+                  <strong class="metric-val" id="c-metric-semana">₡0</strong>
+                </div>
+                <div class="period-metric-row">
+                  <span class="metric-name">Acumulado Mensual (Mes en curso):</span>
+                  <strong class="metric-val" id="c-metric-mes">₡0</strong>
+                </div>
+                <div class="period-metric-divider"></div>
+                <div class="period-metric-row">
+                  <span class="metric-name">Total Empleados (Período):</span>
+                  <span class="metric-val text-rose" id="c-metric-empleados">-₡0</span>
+                </div>
+                <div class="period-metric-row total-row">
+                  <span class="metric-name">Balance Neto en Caja:</span>
+                  <strong class="metric-val text-amber" id="c-metric-neto">₡0</strong>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Indicador de Puntos (Dots) -->
+        <div class="carousel-dots-row">
+          <button type="button" class="carousel-dot active" data-slide="0" aria-label="Ir a Jungles Bar"></button>
+          <button type="button" class="carousel-dot" data-slide="1" aria-label="Ir a La Chichera"></button>
+        </div>
+      </div>
+
+      <!-- HISTORIAL DE CIERRES REGISTRADOS -->
+      <div class="card history-card">
+        <div class="history-header">
+          <div>
+            <h3 class="history-title">Historial de Cierres de Caja</h3>
+            <p class="history-subtitle">Registros guardados en el sistema</p>
+          </div>
+          <div class="history-filters-row">
+            <select id="select-history-venue" class="select-filter" aria-label="Filtrar sede">
+              <option value="all">Todas las Sedes</option>
+              <option value="jungles">Solo Jungles</option>
+              <option value="chichera">Solo La Chichera</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- TABLA COMPLETA PARA PANTALLAS GRANDES / ESCRITORIO -->
+        <div class="table-responsive desktop-history-table">
+          <table class="history-table">
+            <thead>
+              <tr>
+                <th>Fecha (D/M/A)</th>
+                <th>Sede</th>
+                <th>Efectivo</th>
+                <th>Datáfonos (+13%)</th>
+                <th>Créditos</th>
+                <th>Venta Total (Cierre)</th>
+                <th>Empleados</th>
+                <th>Balance Neto</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="history-table-body">
+              <!-- Cierres renderizados vía JS -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- VISTA MÓVIL ADAPTATIVA (ACORDEÓN TÁCTIL) -->
+        <div class="history-mobile-accordion" id="history-mobile-accordion">
+          <!-- Cierres renderizados como acordeón interactivo en celular -->
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ============================================== -->
+    <!-- VISTA 4: HISTORIAL DE RECIBOS Y CIERRES (CON PREVISTAS) -->
+    <!-- ============================================== -->
+    <section id="section-recibos" class="recibos-section" style="display: none;">
+      
+      <div class="recibos-header glass-card">
+        <div class="recibos-header-text">
+          <h2 class="recibos-main-title">Registro de Recibos y Cierres</h2>
+          <p class="recibos-main-subtitle">Vista previa de ventas brutas, rebajos de personal y balance final neto</p>
+        </div>
+
+        <!-- Filtros Rápidos -->
+        <div class="recibos-filters-bar">
+          <div class="recibos-pills-group">
+            <button type="button" class="recibo-filter-pill active" data-venue-filter="all">Todos</button>
+            <button type="button" class="recibo-filter-pill" data-venue-filter="jungles">
+              <img src="assets/jungles_logo.jpg" class="filter-thumb" alt="Jungles"> Jungles
+            </button>
+            <button type="button" class="recibo-filter-pill" data-venue-filter="chichera">
+              <img src="assets/chichera_logo.jpg" class="filter-thumb" alt="La Chichera"> La Chichera
+            </button>
+          </div>
+
+          <div class="recibos-search-box">
+            <input type="date" id="input-filter-recibos-date" class="date-input" title="Buscar por fecha">
+            <button type="button" class="btn btn-sm btn-outline" id="btn-clear-recibos-filter">Limpiar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Métricas Resumen de Recibos -->
+      <div class="recibos-kpi-summary">
+        <div class="recibo-kpi-card">
+          <span class="recibo-kpi-label">Recibos Emitidos</span>
+          <strong class="recibo-kpi-val" id="kpi-recibos-count">0</strong>
+        </div>
+        <div class="recibo-kpi-card">
+          <span class="recibo-kpi-label">Venta Total</span>
+          <strong class="recibo-kpi-val text-emerald" id="kpi-recibos-ventas">₡0</strong>
+        </div>
+        <div class="recibo-kpi-card">
+          <span class="recibo-kpi-label">Rebajos Personal</span>
+          <strong class="recibo-kpi-val text-rose" id="kpi-recibos-rebajos">-₡0</strong>
+        </div>
+        <div class="recibo-kpi-card highlight">
+          <span class="recibo-kpi-label">Balance Neto Total</span>
+          <strong class="recibo-kpi-val text-cyan" id="kpi-recibos-neto">₡0</strong>
+        </div>
+      </div>
+
+      <!-- Cuadrícula de Tarjetas con Previstas -->
+      <div id="recibos-cards-container" class="recibos-cards-container">
+        <!-- Generado dinámicamente en app.js -->
+      </div>
+
+    </section>
+
+  </main>
+  </div> <!-- Fin de .viewport-wrapper -->
+
+  <!-- ============================================== -->
+  <!-- MODAL: DETALLE / COMPROBANTE DE CIERRE (TIPO PDF PRO) -->
+  <!-- ============================================== -->
+  <div class="modal-backdrop" id="modal-receipt" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="receipt-modal-title">
+    <div class="modal-card modal-voucher-pro">
+      <div class="modal-header">
+        <div class="modal-title-with-badge">
+          <h3 id="receipt-modal-title" class="modal-title">Comprobante de Cierre Oficial</h3>
+          <span class="badge-fiscal-format">Documento Digital / PDF</span>
+        </div>
+        <button type="button" class="btn-close" id="btn-close-receipt" aria-label="Cerrar modal">&times;</button>
+      </div>
+
+      <div class="modal-body" id="receipt-printable-area">
+        <!-- El ticket tipo PDF se inyecta con marca de agua y logo respectivo -->
+        <div class="voucher-pdf-container" id="ticket-content">
+          <!-- Contenido del comprobante -->
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="btn-copy-receipt-text">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981z"/>
+          </svg>
+          <span>Compartir WhatsApp</span>
+        </button>
+        <button type="button" class="btn btn-primary" id="btn-print-receipt">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M6 9V2h12v7"></path>
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+            <rect x="6" y="14" width="12" height="8"></rect>
+          </svg>
+          <span>Imprimir / Guardar PDF</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- MODAL: GESTIÓN DE DATOS Y RESPALDO (BACKUP) -->
+  <!-- ============================================== -->
+  <div class="modal-backdrop" id="modal-backup" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="backup-modal-title">
+    <div class="modal-card modal-sm">
+      <div class="modal-header">
+        <h3 id="backup-modal-title" class="modal-title">Respaldo y Configuración</h3>
+        <button type="button" class="btn-close" id="btn-close-backup" aria-label="Cerrar modal">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <p class="backup-info-text">Tus datos se guardan en la memoria local de este dispositivo. Puedes descargar una copia de seguridad o restaurarla en cualquier momento.</p>
+        
+        <div class="backup-actions">
+          <button type="button" class="btn btn-secondary btn-block" id="btn-export-backup">
+            📥 Descargar Copia de Seguridad (JSON)
+          </button>
+          
+          <label class="btn btn-outline btn-block file-upload-label">
+            📤 Restaurar Copia de Seguridad
+            <input type="file" id="input-import-backup" accept=".json" style="display: none;">
+          </label>
+
+          <button type="button" class="btn btn-outline btn-block text-danger" id="btn-reset-sample-data">
+            🔄 Recargar Datos de Demostración
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- MODAL: CONFIRMACIÓN PARA LIMPIAR CAJA -->
+  <!-- ============================================== -->
+  <div class="modal-backdrop" id="modal-confirm-clear" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="confirm-clear-title">
+    <div class="modal-card modal-sm confirm-dialog-card">
+      <div class="confirm-icon-wrap">
+        <span class="confirm-icon">⚠️</span>
+      </div>
+      <div class="confirm-content">
+        <h3 id="confirm-clear-title" class="confirm-title">¿Limpiar toda la caja?</h3>
+        <p class="confirm-text" id="confirm-clear-venue-text">
+          Se borrarán todos los montos de efectivo, datáfonos, créditos y pagos a empleados ingresados hoy para dejar la caja en blanco (₡0).
+        </p>
+      </div>
+      <div class="confirm-actions">
+        <button type="button" class="btn btn-secondary btn-block" id="btn-cancel-clear">
+          Cancelar
+        </button>
+        <button type="button" class="btn btn-danger-solid btn-block" id="btn-confirm-clear-action">
+          🗑️ Sí, Limpiar Todo
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- MODAL: EDITAR RECIBO / CIERRE GUARDADO -->
+  <!-- ============================================== -->
+  <div class="modal-backdrop" id="modal-edit-receipt" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="edit-receipt-title">
+    <div class="modal-card modal-lg edit-receipt-card">
+      <div class="modal-header">
+        <div class="modal-title-with-badge">
+          <h3 id="edit-receipt-title" class="modal-title">✏️ Editar Recibo</h3>
+          <span class="badge-fiscal-format" id="badge-edit-folio">REC-XXXX</span>
+        </div>
+        <button type="button" class="btn-close" id="btn-close-edit-receipt" aria-label="Cerrar modal">&times;</button>
+      </div>
+
+      <div class="modal-body edit-receipt-body">
+        <input type="hidden" id="edit-receipt-id">
+
+        <!-- Banner de sede y fecha -->
+        <div class="edit-meta-row">
+          <div class="edit-venue-badge" id="edit-venue-badge">
+            <img src="assets/jungles_logo.jpg" alt="Logo" class="edit-venue-thumb" id="edit-venue-thumb">
+            <span id="edit-venue-name">Jungles Bar</span>
+          </div>
+          <div class="date-selector-wrapper">
+            <label for="edit-receipt-date" class="label-inline">Fecha:</label>
+            <input type="date" id="edit-receipt-date" class="date-input">
+          </div>
+        </div>
+
+        <!-- Módulo de Ingresos -->
+        <div class="edit-section-box">
+          <h4 class="edit-section-title">💵 Ingresos</h4>
+          <div class="edit-inputs-grid">
+            <div class="input-group">
+              <label for="edit-efectivo" class="input-label">Efectivo en Caja</label>
+              <div class="input-currency-wrapper">
+                <span class="currency-prefix">₡</span>
+                <input type="number" id="edit-efectivo" class="input-currency" placeholder="0" min="0" step="500">
+              </div>
+            </div>
+
+            <div class="input-group">
+              <label for="edit-datafono1" class="input-label">Datáfono 1</label>
+              <div class="input-currency-wrapper">
+                <span class="currency-prefix">₡</span>
+                <input type="number" id="edit-datafono1" class="input-currency" placeholder="0" min="0" step="500">
+              </div>
+            </div>
+
+            <div class="input-group">
+              <label for="edit-datafono2" class="input-label">Datáfono 2</label>
+              <div class="input-currency-wrapper">
+                <span class="currency-prefix">₡</span>
+                <input type="number" id="edit-datafono2" class="input-currency" placeholder="0" min="0" step="500">
+              </div>
+            </div>
+          </div>
+
+          <div class="edit-breakdown-row">
+            <span>Subtotal: <strong id="edit-subtotal-datafonos">₡0</strong></span>
+            <span>+ IVA 13%: <strong id="edit-iva-datafonos">+₡0</strong></span>
+            <span>Total Datáfonos (+13%): <strong class="text-emerald" id="edit-total-datafonos">₡0</strong></span>
+          </div>
+        </div>
+
+        <!-- Créditos / Fiados -->
+        <div class="edit-section-box">
+          <div class="edit-section-header-row">
+            <h4 class="edit-section-title">📝 Créditos / Fiados</h4>
+            <button type="button" class="btn btn-add-action btn-sm" id="btn-edit-add-credito">
+              <span class="add-icon-badge">➕</span>
+              <span>Añadir</span>
+            </button>
+          </div>
+          <div id="edit-creditos-container" class="edit-dynamic-container">
+            <!-- Filas dinámicas -->
+          </div>
+          <div class="edit-subtotal-bar">
+            <span>Total Créditos:</span>
+            <strong id="edit-total-creditos">₡0</strong>
+          </div>
+        </div>
+
+        <!-- Pagos a Empleados -->
+        <div class="edit-section-box">
+          <div class="edit-section-header-row">
+            <h4 class="edit-section-title">👥 Liquidación de Personal (Rebajos)</h4>
+            <button type="button" class="btn btn-add-action btn-sm" id="btn-edit-add-empleado">
+              <span class="add-icon-badge">➕</span>
+              <span>Añadir</span>
+            </button>
+          </div>
+          <div id="edit-empleados-container" class="edit-dynamic-container">
+            <!-- Filas dinámicas -->
+          </div>
+          <div class="edit-subtotal-bar">
+            <span>Total Rebajos Personal:</span>
+            <strong class="text-rose" id="edit-total-empleados">-₡0</strong>
+          </div>
+        </div>
+
+        <!-- Observaciones -->
+        <div class="input-group" style="margin-top: 10px;">
+          <label for="edit-notas" class="input-label">Observaciones / Notas:</label>
+          <textarea id="edit-notas" class="notes-textarea" rows="2" placeholder="Detalles o novedades del turno..."></textarea>
+        </div>
+
+        <!-- PREVISTA EN VIVO TRAS EDICIÓN -->
+        <div class="edit-prevista-banner">
+          <div class="edit-prevista-item">
+            <span class="edit-prevista-label">Venta Total Recalculada</span>
+            <strong class="edit-prevista-val text-emerald" id="edit-preview-total-ventas">₡0</strong>
+          </div>
+          <div class="edit-prevista-item">
+            <span class="edit-prevista-label">Total Rebajos</span>
+            <strong class="edit-prevista-val text-rose" id="edit-preview-total-rebajos">-₡0</strong>
+          </div>
+          <div class="edit-prevista-item highlight">
+            <span class="edit-prevista-label">TOTAL FINAL NETO</span>
+            <strong class="edit-prevista-val huge text-cyan" id="edit-preview-balance-neto">₡0</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="btn-cancel-edit-receipt">Cancelar</button>
+        <button type="button" class="btn btn-outline" id="btn-load-in-cash-register" title="Cargar este recibo en la caja principal para gestionarlo">
+          📥 Cargar en Caja
+        </button>
+        <button type="button" class="btn btn-primary" id="btn-save-edit-receipt">
+          💾 Guardar Cambios
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- MODAL: CONFIGURAR BASE DE DATOS SUPABASE (NUBE) -->
+  <!-- ============================================== -->
+  <div class="modal-backdrop" id="modal-supabase" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="supabase-modal-title">
+    <div class="modal-card modal-md">
+      <div class="modal-header">
+        <div class="modal-title-with-badge">
+          <h3 id="supabase-modal-title" class="modal-title">☁️ Conectar Supabase</h3>
+          <span class="badge-service" id="supabase-connection-status-badge">Modo Local</span>
+        </div>
+        <button type="button" class="btn-close" id="btn-close-supabase-modal" aria-label="Cerrar modal">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 14px; line-height: 1.5;">
+          Conecta una base de datos <strong>PostgreSQL en la nube de Supabase</strong> para guardar y sincronizar los cierres de caja entre teléfonos, tablets y computadoras en tiempo real.
+        </p>
+
+        <div class="input-group" style="margin-bottom: 12px;">
+          <label for="input-supabase-url" class="input-label">Project URL:</label>
+          <div class="input-currency-wrapper" style="border-radius: var(--radius-sm);">
+            <input type="url" id="input-supabase-url" class="dynamic-input-text" placeholder="https://xyzabcdef.supabase.co" style="width: 100%; border: none; background: transparent; padding: 10px;">
+          </div>
+        </div>
+
+        <div class="input-group" style="margin-bottom: 14px;">
+          <label for="input-supabase-key" class="input-label">Project API Anon Key (public):</label>
+          <div class="input-currency-wrapper" style="border-radius: var(--radius-sm);">
+            <input type="password" id="input-supabase-key" class="dynamic-input-text" placeholder="eyJhbGciOiJIUzI1NiIsIn..." style="width: 100%; border: none; background: transparent; padding: 10px;">
+          </div>
+        </div>
+
+        <!-- Resultado de la prueba de conexión -->
+        <div id="supabase-test-result" style="display: none; padding: 10px 12px; border-radius: var(--radius-sm); font-size: 0.82rem; margin-bottom: 12px;"></div>
+
+        <div class="supabase-guide-box" style="background: rgba(255,255,255,0.03); border: 1px dashed var(--border-color); border-radius: var(--radius-sm); padding: 12px; font-size: 0.78rem; color: var(--text-secondary); line-height: 1.5;">
+          <strong style="color: var(--text-highlight); display: block; margin-bottom: 4px;">⚡ ¿Cómo conectarlo en 1 minuto?</strong>
+          1. Crea tu proyecto gratis en <a href="https://supabase.com" target="_blank" style="color: #34d399; text-decoration: underline;">supabase.com</a>.<br>
+          2. En <strong>Project Settings &gt; API</strong> copia la <em>URL</em> y la clave <em>anon key</em>.<br>
+          3. En <strong>SQL Editor</strong> ejecuta el archivo <code>supabase_schema.sql</code> incluido en el proyecto.
+        </div>
+      </div>
+
+      <div class="modal-footer" style="flex-wrap: wrap; gap: 8px;">
+        <button type="button" class="btn btn-secondary" id="btn-cancel-supabase">Cerrar</button>
+        <button type="button" class="btn btn-outline" id="btn-test-supabase">🧪 Probar Conexión</button>
+        <button type="button" class="btn btn-secondary" id="btn-sync-supabase" style="display: none;">🔄 Sincronizar a Nube</button>
+        <button type="button" class="btn btn-outline text-rose" id="btn-disconnect-supabase" style="display: none;">Desconectar</button>
+        <button type="button" class="btn btn-primary" id="btn-save-supabase">💾 Guardar y Conectar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- MODAL: GUÍA DE INSTALACIÓN PWA (ANDROID / IPHONE) -->
+  <!-- ============================================== -->
+  <div class="modal-backdrop" id="modal-install-pwa-guide" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="pwa-guide-title">
+    <div class="modal-card modal-md">
+      <div class="modal-header">
+        <div class="modal-title-with-badge">
+          <h3 id="pwa-guide-title" class="modal-title">📲 Instalar App en Celular</h3>
+          <span class="tag-venue jungles">Jungles Bar</span>
+        </div>
+        <button type="button" class="btn-close" id="btn-close-pwa-guide" aria-label="Cerrar modal">&times;</button>
+      </div>
+      <div class="modal-body" style="text-align: center; padding: 20px 16px;">
+        <div style="width: 80px; height: 80px; margin: 0 auto 14px; border-radius: 20px; overflow: hidden; box-shadow: 0 8px 24px rgba(16, 185, 129, 0.4); border: 2px solid #34d399;">
+          <img src="assets/icon-192.png" alt="Jungles Logo" style="width: 100%; height: 100%; object-fit: cover;">
+        </div>
+        <h4 style="font-size: 1.15rem; color: var(--text-highlight); margin-bottom: 4px;">Jungles & La Chichera</h4>
+        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 16px;">Control de Caja y Ventas Multi-Sede</p>
+        
+        <div style="text-align: left; background: rgba(0,0,0,0.35); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 14px; font-size: 0.85rem; color: var(--text-primary); line-height: 1.6;">
+          <div style="margin-bottom: 12px;">
+            <strong style="color: #34d399;">📱 En Android (Google Chrome):</strong><br>
+            Toca los 3 puntos <code>⋮</code> en la esquina superior derecha y selecciona <strong>"Instalar aplicación"</strong> o <strong>"Añadir a pantalla de inicio"</strong>.
+          </div>
+          <div>
+            <strong style="color: #60a5fa;">🍎 En iPhone / iPad (Safari):</strong><br>
+            Toca el botón Compartir <strong>⎙</strong> (icono de cuadrado con flecha) y selecciona <strong>"Añadir a pantalla de inicio"</strong>.
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary btn-block" id="btn-trigger-native-install">
+          📲 Instalar Aplicación
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICACIONES -->
+  <div class="toast-container" id="toast-container" aria-live="polite"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
