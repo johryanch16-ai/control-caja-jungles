@@ -97,7 +97,7 @@ const SupabaseService = (() => {
 
   // Conversión de formato Objeto App -> Fila BD Supabase
   function toDbRow(c) {
-    return {
+    const row = {
       id: c.id,
       date: c.date,
       venue: c.venue,
@@ -106,6 +106,8 @@ const SupabaseService = (() => {
       datafono1: Number(c.datafono1 || 0),
       datafono2: Number(c.datafono2 || 0),
       total_datafonos: Number(c.totalDatafonos || 0),
+      total_sinpes: Number(c.totalSinpes || 0),
+      sinpes: c.sinpes || [],
       total_creditos: Number(c.totalCreditos || 0),
       total_ventas: Number(c.totalVentas || 0),
       servicio_pct: Number(c.servicioPct || 10),
@@ -114,9 +116,10 @@ const SupabaseService = (() => {
       balance_neto: Number(c.balanceNeto || 0),
       creditos: c.creditos || [],
       empleados: c.empleados || [],
-      notes: c.notes || '',
+      notes: c.notes || c.notas || '',
       updated_at: new Date().toISOString()
     };
+    return row;
   }
 
   // Conversión de formato Fila BD Supabase -> Objeto App
@@ -130,11 +133,14 @@ const SupabaseService = (() => {
       datafono1: Number(r.datafono1 || 0),
       datafono2: Number(r.datafono2 || 0),
       totalDatafonos: Number(r.total_datafonos || 0),
+      totalSinpes: Number(r.total_sinpes || 0),
+      sinpes: Array.isArray(r.sinpes) ? r.sinpes : [],
       totalCreditos: Number(r.total_creditos || 0),
       totalVentas: Number(r.total_ventas || 0),
       servicioPct: Number(r.servicio_pct || 10),
       servicioMonto: Number(r.servicio_monto || 0),
       totalEmpleados: Number(r.total_empleados || 0),
+      efectivoNeto: Number(r.efectivo || 0) - Number(r.total_empleados || 0),
       balanceNeto: Number(r.balance_neto || 0),
       creditos: Array.isArray(r.creditos) ? r.creditos : [],
       empleados: Array.isArray(r.empleados) ? r.empleados : [],
@@ -155,21 +161,36 @@ const SupabaseService = (() => {
         .order('date', { ascending: false });
 
       if (error) throw error;
-      return data.map(fromDbRow);
+      return (data || []).map(fromDbRow);
     } catch (err) {
-      console.warn('Error al consultar Supabase, usando respaldo local:', err);
+      console.error('Error al descargar de Supabase:', err);
       return null;
     }
   }
 
-  // Guardar un nuevo cierre en la nube
+  // Guardar o actualizar un cierre individual en la nube
   async function saveClosure(closure) {
     if (!client) initClient();
     if (!client) return false;
 
     try {
       const row = toDbRow(closure);
-      const { error } = await client.from('cierres').upsert(row);
+      let { error } = await client.from('cierres').upsert(row);
+
+      // Si las columnas sinpes aún no existen en la tabla de Supabase (error 42703)
+      if (error && (error.code === '42703' || (error.message && error.message.includes('sinpe')))) {
+        console.warn('Columnas sinpes no encontradas en Supabase. Guardando con compatibilidad retroactiva:', error.message);
+        const fallbackRow = { ...row };
+        delete fallbackRow.total_sinpes;
+        delete fallbackRow.sinpes;
+        if (closure.totalSinpes > 0) {
+          fallbackRow.notes = (fallbackRow.notes ? fallbackRow.notes + ' | ' : '') + `[SINPE: ₡${closure.totalSinpes}]`;
+        }
+        const retry = await client.from('cierres').upsert(fallbackRow);
+        if (retry.error) throw retry.error;
+        return true;
+      }
+
       if (error) throw error;
       return true;
     } catch (err) {

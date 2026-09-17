@@ -13,18 +13,24 @@ CREATE TABLE IF NOT EXISTS public.cierres (
     datafono1 NUMERIC(12, 2) DEFAULT 0,
     datafono2 NUMERIC(12, 2) DEFAULT 0,
     total_datafonos NUMERIC(12, 2) DEFAULT 0,
+    total_sinpes NUMERIC(12, 2) DEFAULT 0,
     total_creditos NUMERIC(12, 2) DEFAULT 0,
     total_ventas NUMERIC(12, 2) DEFAULT 0,
     servicio_pct NUMERIC(5, 2) DEFAULT 10,
     servicio_monto NUMERIC(12, 2) DEFAULT 0,
     total_empleados NUMERIC(12, 2) DEFAULT 0,
     balance_neto NUMERIC(12, 2) DEFAULT 0,
+    sinpes JSONB DEFAULT '[]'::jsonb,
     creditos JSONB DEFAULT '[]'::jsonb,
     empleados JSONB DEFAULT '[]'::jsonb,
     notes TEXT DEFAULT '',
     created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+
+-- Si la tabla ya existe, ejecutar esta migración en el SQL Editor de Supabase:
+-- ALTER TABLE public.cierres ADD COLUMN IF NOT EXISTS total_sinpes NUMERIC(12, 2) DEFAULT 0;
+-- ALTER TABLE public.cierres ADD COLUMN IF NOT EXISTS sinpes JSONB DEFAULT '[]'::jsonb;
 
 -- Índices para consultas ultra-rápidas por fecha y sede
 CREATE INDEX IF NOT EXISTS idx_cierres_date ON public.cierres(date DESC);

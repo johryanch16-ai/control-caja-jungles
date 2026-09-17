@@ -209,7 +209,40 @@
             </div>
           </div>
 
-          <!-- 3. Sección Dinámica Créditos / Fiados -->
+          <!-- 3. Sección Dinámica SINPE Móvil -->
+          <div class="card form-card card-sinpes">
+            <div class="card-header-actions">
+              <div>
+                <div class="title-with-badge">
+                  <span class="field-title">📱 SINPE Móvil / Transferencias</span>
+                  <span class="badge-count" id="badge-count-sinpes">0 pagos</span>
+                </div>
+                <span class="field-helper">Pagos y transferencias por SINPE Móvil recibidos</span>
+              </div>
+              <button type="button" class="btn btn-add-action" id="btn-add-sinpe" title="Añadir nuevo pago por SINPE Móvil">
+                <span class="add-icon-badge">➕</span>
+                <span>Añadir</span>
+              </button>
+            </div>
+
+            <div id="sinpes-container" class="dynamic-rows-container">
+              <!-- Las filas de SINPE se generan dinámicamente -->
+              <div class="empty-state-card" id="empty-sinpes">
+                <p>No hay transferencias de SINPE Móvil registradas hoy.</p>
+                <button type="button" class="btn btn-add-action btn-sm" id="btn-add-sinpe-empty" style="margin-top: 8px;">
+                  <span class="add-icon-badge">➕</span>
+                  <span>Registrar Primer SINPE</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="subtotal-bar">
+              <span>Total SINPE Móvil:</span>
+              <strong id="display-total-sinpes" class="text-cyan">₡0</strong>
+            </div>
+          </div>
+
+          <!-- 4. Sección Dinámica Créditos / Fiados -->
           <div class="card form-card">
             <div class="card-header-actions">
               <div>
@@ -247,7 +280,7 @@
             <div class="ventas-header">
               <div>
                 <span class="total-label">TOTAL VENTAS DEL DÍA</span>
-                <p class="formula-text">Efectivo + Datáfonos (-13%) + Créditos</p>
+                <p class="formula-text">Efectivo + Datáfonos (-13%) + SINPE + Créditos</p>
               </div>
               <div class="total-amount" id="display-total-ventas">₡0</div>
             </div>
@@ -328,6 +361,11 @@
               <span>Total Pagado a Empleados:</span>
               <strong id="display-total-empleados" class="text-danger">₡0</strong>
             </div>
+
+            <div class="subtotal-bar" style="margin-top: 8px; background: rgba(16, 185, 129, 0.08); border-color: rgba(16, 185, 129, 0.3);">
+              <span>💵 Total Efectivo Restante en Caja (Efectivo - Empleados):</span>
+              <strong id="display-efectivo-neto" class="text-emerald">₡0</strong>
+            </div>
           </div>
         </div>
 
@@ -360,10 +398,16 @@
                 <span class="metric-value text-amber" id="summary-servicio">₡0</span>
               </div>
 
+              <div class="metric-item highlight-efectivo-neto">
+                <span class="metric-label">💵 TOTAL EFECTIVO EN CAJA</span>
+                <span class="metric-value-huge text-emerald" id="summary-efectivo-neto">₡0</span>
+                <span class="metric-sublabel">Total efectivo menos pago de empleados (físico en gaveta)</span>
+              </div>
+
               <div class="metric-item highlight-neto">
-                <span class="metric-label">TOTAL FINAL NETO EN CAJA</span>
-                <span class="metric-value-huge" id="summary-total-neto">₡0</span>
-                <span class="metric-sublabel">Disponible tras liquidar personal</span>
+                <span class="metric-label">⚖️ TOTAL FINAL NETO DEL DÍA</span>
+                <span class="metric-value-huge text-cyan" id="summary-total-neto">₡0</span>
+                <span class="metric-sublabel">Total ventas menos pagos a personal (balance neto global)</span>
               </div>
             </div>
 
@@ -635,9 +679,11 @@
                 <th>Sede</th>
                 <th>Efectivo</th>
                 <th>Datáfonos (-13%)</th>
+                <th>SINPE</th>
                 <th>Créditos</th>
                 <th>Venta Total (Cierre)</th>
                 <th>Empleados</th>
+                <th>Ef. Neto Caja</th>
                 <th>Balance Neto</th>
                 <th>Acciones</th>
               </tr>
@@ -880,6 +926,24 @@
           </div>
         </div>
 
+        <!-- SINPE Móvil -->
+        <div class="edit-section-box">
+          <div class="edit-section-header-row">
+            <h4 class="edit-section-title">📱 SINPE Móvil / Transferencias</h4>
+            <button type="button" class="btn btn-add-action btn-sm" id="btn-edit-add-sinpe">
+              <span class="add-icon-badge">➕</span>
+              <span>Añadir</span>
+            </button>
+          </div>
+          <div id="edit-sinpes-container" class="edit-dynamic-container">
+            <!-- Filas dinámicas -->
+          </div>
+          <div class="edit-subtotal-bar">
+            <span>Total SINPE:</span>
+            <strong id="edit-total-sinpes" class="text-cyan">₡0</strong>
+          </div>
+        </div>
+
         <!-- Créditos / Fiados -->
         <div class="edit-section-box">
           <div class="edit-section-header-row">
@@ -931,6 +995,10 @@
           <div class="edit-prevista-item">
             <span class="edit-prevista-label">Total Rebajos</span>
             <strong class="edit-prevista-val text-rose" id="edit-preview-total-rebajos">-₡0</strong>
+          </div>
+          <div class="edit-prevista-item">
+            <span class="edit-prevista-label">Efectivo en Caja</span>
+            <strong class="edit-prevista-val text-emerald" id="edit-preview-efectivo-neto">₡0</strong>
           </div>
           <div class="edit-prevista-item highlight">
             <span class="edit-prevista-label">TOTAL FINAL NETO</span>

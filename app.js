@@ -13,6 +13,7 @@ function getCleanDraft() {
     efectivo: 0,
     datafono1: 0,
     datafono2: 0,
+    sinpes: [],
     creditos: [],
     servicioPct: 10,
     servicioMontoManual: null,
@@ -171,11 +172,16 @@ function calculateVenueTotals(venueId) {
   const ivaDatafonos = subtotalDatafonos * 0.13;
   const totalDatafonos = subtotalDatafonos - ivaDatafonos; // (d1 + d2) - 13%
 
-  // Créditos / Fiados
-  const totalCreditos = draft.creditos.reduce((acc, item) => acc + (Number(item.amount) || 0), 0);
+  // SINPE Móvil / Transferencias
+  const sinpes = Array.isArray(draft.sinpes) ? draft.sinpes : [];
+  const totalSinpes = sinpes.reduce((acc, item) => acc + (Number(item.amount) || 0), 0);
 
-  // Total Ventas del Día = Efectivo + Total Datáfonos (-13%) + Total Créditos
-  const totalVentas = efectivo + totalDatafonos + totalCreditos;
+  // Créditos / Fiados
+  const creditos = Array.isArray(draft.creditos) ? draft.creditos : [];
+  const totalCreditos = creditos.reduce((acc, item) => acc + (Number(item.amount) || 0), 0);
+
+  // Total Ventas del Día = Efectivo + Total Datáfonos (-13%) + Total SINPE + Total Créditos
+  const totalVentas = efectivo + totalDatafonos + totalSinpes + totalCreditos;
 
   // 10% de Servicio / Ley
   const servicioPct = Number(draft.servicioPct) !== undefined ? Number(draft.servicioPct) : 10;
@@ -185,7 +191,11 @@ function calculateVenueTotals(venueId) {
   const servicioMontoFinal = draft.servicioMontoManual !== null ? Number(draft.servicioMontoManual) : servicioProyectado;
 
   // Pagos a Empleados
-  const totalEmpleados = draft.empleados.reduce((acc, item) => acc + (Number(item.amount) || 0), 0);
+  const empleados = Array.isArray(draft.empleados) ? draft.empleados : [];
+  const totalEmpleados = empleados.reduce((acc, item) => acc + (Number(item.amount) || 0), 0);
+
+  // Total Efectivo en Caja = Efectivo - Total Empleados
+  const efectivoNeto = efectivo - totalEmpleados;
 
   // Total Final Neto = Total Ventas del Día - Total Pagado a Empleados
   const balanceNeto = totalVentas - totalEmpleados;
@@ -197,12 +207,17 @@ function calculateVenueTotals(venueId) {
     subtotalDatafonos,
     ivaDatafonos,
     totalDatafonos,
+    sinpes,
+    totalSinpes,
+    creditos,
     totalCreditos,
     totalVentas,
     servicioPct,
     servicioProyectado,
     servicioMontoFinal,
+    empleados,
     totalEmpleados,
+    efectivoNeto,
     balanceNeto
   };
 }
@@ -290,6 +305,7 @@ function populateFormWithDraft(venueId) {
 
   inputNotes.value = draft.notas || '';
 
+  renderSinpesRows();
   renderCreditosRows();
   renderEmpleadosRows();
   recalculateAndRenderForm();
@@ -306,6 +322,13 @@ function recalculateAndRenderForm() {
   document.getElementById('display-subtotal-datafonos').textContent = formatCurrency(totals.subtotalDatafonos);
   document.getElementById('display-iva-datafonos').textContent = '-' + formatCurrency(totals.ivaDatafonos);
   document.getElementById('display-total-datafonos').textContent = formatCurrency(totals.totalDatafonos);
+
+  // SINPE Móvil
+  const currentSinpes = AppState.drafts[AppState.currentVenue].sinpes || [];
+  const elTotalSinpes = document.getElementById('display-total-sinpes');
+  if (elTotalSinpes) elTotalSinpes.textContent = formatCurrency(totals.totalSinpes);
+  const elBadgeSinpes = document.getElementById('badge-count-sinpes');
+  if (elBadgeSinpes) elBadgeSinpes.textContent = `${currentSinpes.length} pagos`;
 
   // Créditos
   document.getElementById('display-total-creditos').textContent = formatCurrency(totals.totalCreditos);
@@ -324,6 +347,12 @@ function recalculateAndRenderForm() {
   // Empleados
   document.getElementById('display-total-empleados').textContent = formatCurrency(totals.totalEmpleados);
   document.getElementById('badge-count-empleados').textContent = `${AppState.drafts[AppState.currentVenue].empleados.length} pagos`;
+
+  // Total Efectivo en Caja (Efectivo menos Empleados)
+  const elEfectivoNeto = document.getElementById('display-efectivo-neto');
+  if (elEfectivoNeto) elEfectivoNeto.textContent = formatCurrency(totals.efectivoNeto);
+  const elSummaryEfectivoNeto = document.getElementById('summary-efectivo-neto');
+  if (elSummaryEfectivoNeto) elSummaryEfectivoNeto.textContent = formatCurrency(totals.efectivoNeto);
 
   // Balance Final Diario
   document.getElementById('summary-ventas').textContent = formatCurrency(totals.totalVentas);
@@ -353,8 +382,86 @@ function updateHeaderBadges() {
 }
 
 // ==========================================
-// MANEJO DE FILAS DINÁMICAS (CRÉDITOS & EMPLEADOS)
+// MANEJO DE FILAS DINÁMICAS (SINPE, CRÉDITOS & EMPLEADOS)
 // ==========================================
+function renderSinpesRows() {
+  const container = document.getElementById('sinpes-container');
+  if (!container) return;
+  const draft = AppState.drafts[AppState.currentVenue];
+  if (!draft.sinpes) draft.sinpes = [];
+  const sinpes = draft.sinpes;
+
+  if (sinpes.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state-card" id="empty-sinpes">
+        <p>No hay transferencias de SINPE Móvil registradas hoy.</p>
+        <button type="button" class="btn btn-add-action btn-sm" id="btn-add-sinpe-empty" style="margin-top: 10px;">
+          <span class="add-icon-badge">➕</span>
+          <span>Registrar Primer SINPE</span>
+        </button>
+      </div>
+    `;
+    const btnEmpty = document.getElementById('btn-add-sinpe-empty');
+    if (btnEmpty) btnEmpty.addEventListener('click', addSinpeRow);
+    return;
+  }
+
+  container.innerHTML = '';
+  sinpes.forEach((item, index) => {
+    const row = document.createElement('div');
+    row.className = 'dynamic-row';
+    row.innerHTML = `
+      <input type="text" class="dynamic-input-text input-sinpe-name" placeholder="Cliente / Ref / Teléfono" value="${item.name || ''}" data-index="${index}">
+      <div class="input-currency-wrapper small">
+        <span class="currency-prefix">₡</span>
+        <input type="number" class="input-currency input-sinpe-amount" placeholder="0" value="${item.amount || ''}" min="0" step="100" data-index="${index}" inputmode="numeric">
+      </div>
+      <button type="button" class="btn-delete-row" title="Eliminar fila" data-index="${index}" aria-label="Eliminar SINPE">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+        </svg>
+      </button>
+    `;
+
+    // Eventos de inputs
+    row.querySelector('.input-sinpe-name').addEventListener('input', (e) => {
+      sinpes[index].name = e.target.value;
+      saveToStorage();
+    });
+
+    row.querySelector('.input-sinpe-amount').addEventListener('input', (e) => {
+      sinpes[index].amount = parseCurrencyInput(e.target.value);
+      recalculateAndRenderForm();
+    });
+
+    row.querySelector('.btn-delete-row').addEventListener('click', () => {
+      sinpes.splice(index, 1);
+      renderSinpesRows();
+      recalculateAndRenderForm();
+    });
+
+    container.appendChild(row);
+  });
+}
+
+function addSinpeRow() {
+  const draft = AppState.drafts[AppState.currentVenue];
+  if (!draft.sinpes) draft.sinpes = [];
+  draft.sinpes.push({
+    id: 'sn_' + Date.now(),
+    name: '',
+    amount: 0
+  });
+  renderSinpesRows();
+  recalculateAndRenderForm();
+  
+  setTimeout(() => {
+    const names = document.querySelectorAll('.input-sinpe-name');
+    if (names.length) names[names.length - 1].focus();
+  }, 50);
+}
+
 function renderCreditosRows() {
   const container = document.getElementById('creditos-container');
   const creditos = AppState.drafts[AppState.currentVenue].creditos;
@@ -532,6 +639,8 @@ function saveDailyClosure() {
     subtotalDatafonos: totals.subtotalDatafonos,
     ivaDatafonos: totals.ivaDatafonos,
     totalDatafonos: totals.totalDatafonos,
+    sinpes: JSON.parse(JSON.stringify(draft.sinpes || [])),
+    totalSinpes: totals.totalSinpes,
     creditos: JSON.parse(JSON.stringify(draft.creditos)),
     totalCreditos: totals.totalCreditos,
     totalVentas: totals.totalVentas,
@@ -539,6 +648,7 @@ function saveDailyClosure() {
     servicioMonto: totals.servicioMontoFinal,
     empleados: JSON.parse(JSON.stringify(draft.empleados)),
     totalEmpleados: totals.totalEmpleados,
+    efectivoNeto: totals.efectivoNeto,
     balanceNeto: totals.balanceNeto,
     notas: notes,
     timestamp: new Date().toISOString()
@@ -764,10 +874,12 @@ function renderHistoryTable() {
         </td>
         <td>${formatCurrency(c.efectivo)}</td>
         <td>${formatCurrency(c.totalDatafonos)}</td>
+        <td>${formatCurrency(c.totalSinpes || 0)}</td>
         <td>${formatCurrency(c.totalCreditos)}</td>
         <td><strong class="text-primary">${formatCurrency(c.totalVentas)}</strong></td>
         <td class="text-rose">-${formatCurrency(c.totalEmpleados)}</td>
-        <td><strong class="text-emerald">${formatCurrency(c.balanceNeto)}</strong></td>
+        <td class="text-emerald"><strong>${formatCurrency((c.efectivo || 0) - (c.totalEmpleados || 0))}</strong></td>
+        <td><strong class="text-cyan">${formatCurrency(c.balanceNeto)}</strong></td>
         <td>
           <div class="action-btns-cell">
             <button type="button" class="btn-table-action edit-btn" data-id="${c.id}" title="Editar Cierre">✏️</button>
@@ -862,6 +974,16 @@ function renderHistoryTable() {
               <span class="history-detail-val">${formatCurrency(c.totalDatafonos)}</span>
             </div>
 
+            <div class="history-detail-item ${c.sinpes && c.sinpes.length > 0 ? 'full-width' : ''}">
+              <span class="history-detail-label">📱 SINPE Móvil</span>
+              <span class="history-detail-val text-cyan">${formatCurrency(c.totalSinpes || 0)}</span>
+              ${c.sinpes && c.sinpes.length > 0 ? `
+                <div class="history-mini-chips">
+                  ${c.sinpes.map(s => `<span class="history-mini-chip">${s.name || 'SINPE'}: ${formatCurrency(s.amount)}</span>`).join('')}
+                </div>
+              ` : ''}
+            </div>
+
             <div class="history-detail-item ${c.creditos && c.creditos.length > 0 ? 'full-width' : ''}">
               <span class="history-detail-label">📝 Créditos / Fiados</span>
               <span class="history-detail-val">${formatCurrency(c.totalCreditos)}</span>
@@ -879,9 +1001,14 @@ function renderHistoryTable() {
               ${empleadosListHtml}
             </div>
 
+            <div class="history-detail-item full-width highlight-efectivo-neto" style="background: rgba(16, 185, 129, 0.12); border-color: rgba(16, 185, 129, 0.4); text-align: center; padding: 10px;">
+              <span class="history-detail-label" style="color: #34d399; font-weight: 700;">💵 TOTAL EFECTIVO EN CAJA (Efectivo - Empleados)</span>
+              <span class="history-detail-val text-emerald" style="font-size: 1.25rem; font-weight: 800;">${formatCurrency((c.efectivo || 0) - (c.totalEmpleados || 0))}</span>
+            </div>
+
             <div class="history-detail-item full-width highlight-neto">
-              <span class="history-detail-label">⚖️ TOTAL FINAL NETO EN CAJA</span>
-              <span class="history-detail-val text-emerald" style="font-size: 1.18rem;">${formatCurrency(c.balanceNeto)}</span>
+              <span class="history-detail-label">⚖️ TOTAL FINAL NETO DEL DÍA</span>
+              <span class="history-detail-val text-cyan" style="font-size: 1.18rem;">${formatCurrency(c.balanceNeto)}</span>
             </div>
           </div>
 
@@ -1053,6 +1180,16 @@ function generateWhatsAppText(c) {
   text += `🧾 *Subtotal Tarjetas:* ${formatCurrency(c.subtotalDatafonos)}\n`;
   text += `➖ *Rebajo IVA (13%):* -${formatCurrency(c.ivaDatafonos)}\n`;
   text += `💳 *Total Datáfonos (-13%):* ${formatCurrency(c.totalDatafonos)}\n`;
+  if (c.sinpes && c.sinpes.length > 0) {
+    text += `━━━━━━━━━━━━━━━━━━━━━\n`;
+    text += `📱 *SINPE Móvil:* ${formatCurrency(c.totalSinpes || 0)} (${c.sinpes.length} transferencias)\n`;
+    c.sinpes.forEach(sn => {
+      text += `  • ${sn.name || 'Transferencia'}: ${formatCurrency(sn.amount)}\n`;
+    });
+  } else if (c.totalSinpes) {
+    text += `━━━━━━━━━━━━━━━━━━━━━\n`;
+    text += `📱 *SINPE Móvil:* ${formatCurrency(c.totalSinpes)}\n`;
+  }
   text += `━━━━━━━━━━━━━━━━━━━━━\n`;
   text += `📝 *Créditos / Fiados:* ${formatCurrency(c.totalCreditos)} (${c.creditos.length} clientes)\n`;
   if (c.creditos.length > 0) {
@@ -1071,7 +1208,9 @@ function generateWhatsAppText(c) {
     });
   }
   text += `━━━━━━━━━━━━━━━━━━━━━\n`;
-  text += `💰 *TOTAL FINAL NETO EN CAJA: ${formatCurrency(c.balanceNeto)}*\n`;
+  const efNeto = (c.efectivo || 0) - (c.totalEmpleados || 0);
+  text += `💵 *TOTAL EFECTIVO EN CAJA: ${formatCurrency(efNeto)}* (Efectivo menos Empleados)\n`;
+  text += `💰 *TOTAL FINAL NETO DEL DÍA: ${formatCurrency(c.balanceNeto)}*\n`;
   text += `━━━━━━━━━━━━━━━━━━━━━\n`;
   if (c.notas) {
     text += `📌 *Observaciones:* ${c.notas}\n`;
@@ -1175,8 +1314,9 @@ function renderRecibosView() {
 
       <!-- Desglose de Operaciones en Chips -->
       <div class="recibo-chips-row">
-        <span class="recibo-mini-chip">💵 Efectivo: <strong>${formatCurrency(c.efectivo)}</strong></span>
+        <span class="recibo-mini-chip">💵 Ef. en Caja: <strong>${formatCurrency((c.efectivo || 0) - (c.totalEmpleados || 0))}</strong></span>
         <span class="recibo-mini-chip">💳 Datáfonos (-13%): <strong>${formatCurrency(c.totalDatafonos)}</strong></span>
+        <span class="recibo-mini-chip">📱 SINPE: <strong>${formatCurrency(c.totalSinpes || 0)}</strong> (${c.sinpes ? c.sinpes.length : 0})</span>
         <span class="recibo-mini-chip">📝 Créditos: <strong>${formatCurrency(c.totalCreditos)}</strong> (${creditosCount})</span>
         <span class="recibo-mini-chip">👥 Personal: <strong>${empleadosCount} pagos</strong></span>
       </div>
@@ -1251,6 +1391,7 @@ function executeClearForm() {
     efectivo: 0,
     datafono1: 0,
     datafono2: 0,
+    sinpes: [],
     creditos: [],
     servicioPct: 10,
     servicioMontoManual: null,
@@ -1298,6 +1439,7 @@ function openEditReceiptModal(closure) {
     efectivo: Number(closure.efectivo) || 0,
     datafono1: Number(closure.datafono1) || 0,
     datafono2: Number(closure.datafono2) || 0,
+    sinpes: Array.isArray(closure.sinpes) ? JSON.parse(JSON.stringify(closure.sinpes)) : [],
     creditos: Array.isArray(closure.creditos) ? JSON.parse(JSON.stringify(closure.creditos)) : [],
     empleados: Array.isArray(closure.empleados) ? JSON.parse(JSON.stringify(closure.empleados)) : [],
     servicioPct: closure.servicioPct || 10,
@@ -1320,11 +1462,58 @@ function openEditReceiptModal(closure) {
   document.getElementById('edit-datafono2').value = currentEditingDraft.datafono2 ? currentEditingDraft.datafono2 : '';
   document.getElementById('edit-notas').value = currentEditingDraft.notas || '';
 
+  renderEditSinpesRows();
   renderEditCreditosRows();
   renderEditEmpleadosRows();
   recalculateEditTotals();
 
   modal.style.display = 'flex';
+}
+
+function renderEditSinpesRows() {
+  const container = document.getElementById('edit-sinpes-container');
+  if (!container || !currentEditingDraft) return;
+
+  if (!currentEditingDraft.sinpes) currentEditingDraft.sinpes = [];
+
+  if (currentEditingDraft.sinpes.length === 0) {
+    container.innerHTML = `<div style="text-align:center; padding: 10px; font-size: 0.8rem; color: var(--text-muted);">Sin transferencias SINPE registradas</div>`;
+    return;
+  }
+
+  container.innerHTML = '';
+  currentEditingDraft.sinpes.forEach((item, index) => {
+    const row = document.createElement('div');
+    row.className = 'dynamic-row';
+    row.innerHTML = `
+      <input type="text" class="dynamic-input-text edit-sinpe-name" placeholder="Cliente / Ref" value="${item.name || ''}" data-idx="${index}">
+      <div class="input-currency-wrapper small">
+        <span class="currency-prefix">₡</span>
+        <input type="number" class="input-currency edit-sinpe-amount" placeholder="0" value="${item.amount || ''}" min="0" step="500" data-idx="${index}">
+      </div>
+      <button type="button" class="btn-delete-row edit-del-sinpe" title="Eliminar" data-idx="${index}">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+        </svg>
+      </button>
+    `;
+
+    row.querySelector('.edit-sinpe-name').addEventListener('input', (e) => {
+      currentEditingDraft.sinpes[index].name = e.target.value;
+    });
+    row.querySelector('.edit-sinpe-amount').addEventListener('input', (e) => {
+      currentEditingDraft.sinpes[index].amount = parseCurrencyInput(e.target.value);
+      recalculateEditTotals();
+    });
+    row.querySelector('.edit-del-sinpe').addEventListener('click', () => {
+      currentEditingDraft.sinpes.splice(index, 1);
+      renderEditSinpesRows();
+      recalculateEditTotals();
+    });
+
+    container.appendChild(row);
+  });
 }
 
 function renderEditCreditosRows() {
@@ -1432,28 +1621,38 @@ function recalculateEditTotals() {
   const ivaD = subtotalD * 0.13;
   const totalD = subtotalD - ivaD;
 
+  if (!currentEditingDraft.sinpes) currentEditingDraft.sinpes = [];
+  const totalSinp = currentEditingDraft.sinpes.reduce((acc, s) => acc + (Number(s.amount) || 0), 0);
   const totalCred = currentEditingDraft.creditos.reduce((acc, c) => acc + (Number(c.amount) || 0), 0);
-  const totalVentas = ef + totalD + totalCred;
+  const totalVentas = ef + totalD + totalSinp + totalCred;
   const totalEmp = currentEditingDraft.empleados.reduce((acc, e) => acc + (Number(e.amount) || 0), 0);
+  const efectivoNeto = ef - totalEmp;
   const balanceNeto = totalVentas - totalEmp;
 
   document.getElementById('edit-subtotal-datafonos').textContent = formatCurrency(subtotalD);
   document.getElementById('edit-iva-datafonos').textContent = '-' + formatCurrency(ivaD);
   document.getElementById('edit-total-datafonos').textContent = formatCurrency(totalD);
+  const elEditSinpes = document.getElementById('edit-total-sinpes');
+  if (elEditSinpes) elEditSinpes.textContent = formatCurrency(totalSinp);
   document.getElementById('edit-total-creditos').textContent = formatCurrency(totalCred);
   document.getElementById('edit-total-empleados').textContent = '-' + formatCurrency(totalEmp);
 
   document.getElementById('edit-preview-total-ventas').textContent = formatCurrency(totalVentas);
   document.getElementById('edit-preview-total-rebajos').textContent = '-' + formatCurrency(totalEmp);
+  const elEditPreviewEf = document.getElementById('edit-preview-efectivo-neto');
+  if (elEditPreviewEf) elEditPreviewEf.textContent = formatCurrency(efectivoNeto);
   document.getElementById('edit-preview-balance-neto').textContent = formatCurrency(balanceNeto);
 
   return {
     subtotalDatafonos: subtotalD,
     ivaDatafonos: ivaD,
     totalDatafonos: totalD,
+    sinpes: currentEditingDraft.sinpes,
+    totalSinpes: totalSinp,
     totalCreditos: totalCred,
     totalVentas,
     totalEmpleados: totalEmp,
+    efectivoNeto,
     balanceNeto
   };
 }
@@ -1474,12 +1673,15 @@ function saveEditedReceipt() {
     subtotalDatafonos: totals.subtotalDatafonos,
     ivaDatafonos: totals.ivaDatafonos,
     totalDatafonos: totals.totalDatafonos,
+    sinpes: JSON.parse(JSON.stringify(currentEditingDraft.sinpes || [])),
+    totalSinpes: totals.totalSinpes,
     creditos: JSON.parse(JSON.stringify(currentEditingDraft.creditos)),
     totalCreditos: totals.totalCreditos,
     totalVentas: totals.totalVentas,
     servicioMonto: totals.totalVentas * ((currentEditingDraft.servicioPct || 10) / 100),
     empleados: JSON.parse(JSON.stringify(currentEditingDraft.empleados)),
     totalEmpleados: totals.totalEmpleados,
+    efectivoNeto: totals.efectivoNeto,
     balanceNeto: totals.balanceNeto,
     notas: currentEditingDraft.notas,
     lastEditedAt: new Date().toISOString()
@@ -1637,6 +1839,21 @@ function showReceiptModal(closure) {
     </table>
 
     <div class="voucher-section-heading" style="margin-top: 8px;">
+      <span>📱 SINPE Móvil (${closure.sinpes ? closure.sinpes.length : 0})</span>
+      <span>${formatCurrency(closure.totalSinpes || 0)}</span>
+    </div>
+    <table class="voucher-table">
+      <tbody>
+        ${closure.sinpes && closure.sinpes.length > 0 ? closure.sinpes.map(sn => `
+          <tr>
+            <td>&bull; SINPE: <strong>${sn.name || 'Transferencia'}</strong></td>
+            <td class="td-val">${formatCurrency(sn.amount)}</td>
+          </tr>
+        `).join('') : '<tr><td style="color:#64748b; font-style:italic;">Sin transferencias SINPE registradas</td><td class="td-val">₡0</td></tr>'}
+      </tbody>
+    </table>
+
+    <div class="voucher-section-heading" style="margin-top: 8px;">
       <span>Créditos / Cuentas Fiadas (${closure.creditos ? closure.creditos.length : 0})</span>
       <span>${formatCurrency(closure.totalCreditos)}</span>
     </div>
@@ -1677,11 +1894,15 @@ function showReceiptModal(closure) {
         <span>Total Pagado a Empleados (Rebajos):</span>
         <strong style="color: #fb7185;">-${formatCurrency(closure.totalEmpleados)}</strong>
       </div>
+      <div class="voucher-neto-row" style="background: rgba(16, 185, 129, 0.15); padding: 6px 10px; border-radius: 6px; margin: 4px 0;">
+        <span style="color: #34d399; font-weight: 600;">💵 TOTAL EFECTIVO EN CAJA (Efectivo - Empleados):</span>
+        <strong style="color: #34d399; font-size: 1.05rem;">${formatCurrency((closure.efectivo || 0) - (closure.totalEmpleados || 0))}</strong>
+      </div>
       <div class="voucher-neto-divider"></div>
       <div class="voucher-neto-final">
         <div>
-          <div class="label-main">TOTAL FINAL NETO EN CAJA</div>
-          <small style="color: #94a3b8; font-size: 0.72rem;">Efectivo líquido disponible</small>
+          <div class="label-main">TOTAL FINAL NETO DEL DÍA</div>
+          <small style="color: #94a3b8; font-size: 0.72rem;">Balance general tras liquidar personal</small>
         </div>
         <div class="val-main">${formatCurrency(closure.balanceNeto)}</div>
       </div>
@@ -1860,6 +2081,8 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Botones añadir filas
+  const btnAddSinpe = document.getElementById('btn-add-sinpe');
+  if (btnAddSinpe) btnAddSinpe.addEventListener('click', addSinpeRow);
   document.getElementById('btn-add-credito').addEventListener('click', addCreditoRow);
   document.getElementById('btn-add-empleado').addEventListener('click', addEmpleadoRow);
 
@@ -1938,6 +2161,17 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Botones añadir filas en modal de edición
+  const btnEditAddSinpe = document.getElementById('btn-edit-add-sinpe');
+  if (btnEditAddSinpe) {
+    btnEditAddSinpe.addEventListener('click', () => {
+      if (!currentEditingDraft) return;
+      if (!currentEditingDraft.sinpes) currentEditingDraft.sinpes = [];
+      currentEditingDraft.sinpes.push({ id: 's_' + Date.now(), name: '', amount: 0 });
+      renderEditSinpesRows();
+      recalculateEditTotals();
+    });
+  }
+
   document.getElementById('btn-edit-add-credito').addEventListener('click', () => {
     if (!currentEditingDraft) return;
     currentEditingDraft.creditos.push({ id: 'c_' + Date.now(), name: '', amount: 0 });
